@@ -1,0 +1,473 @@
+{
+  "threshold": 1.0,
+  "total_days": 1249,
+  "total_significant_days": 665,
+  "positive_moves": 337,
+  "negative_moves": 328,
+  "next_day_stats": {
+    "after_positive": {
+      "up": 135,
+      "down": 122,
+      "sideways": 80,
+      "avg_change": 0.07794556445516476,
+      "std_change": 2.3047901999391933
+    },
+    "after_negative": {
+      "up": 139,
+      "down": 118,
+      "sideways": 71,
+      "avg_change": 0.17396363964624798,
+      "std_change": 2.424207765482032
+    }
+  },
+  "streaks": [
+    {
+      "start_date": "2020-12-23 09:00:00",
+      "end_date": "2021-01-06 09:00:00",
+      "length": 9,
+      "direction": "bullish",
+      "up_days": 6,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2021-01-11 09:00:00",
+      "end_date": "2021-01-14 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": 0.42553191489360653
+    },
+    {
+      "start_date": "2021-02-18 09:00:00",
+      "end_date": "2021-02-24 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 3,
+      "next_day_change": 0.8510638297872353
+    },
+    {
+      "start_date": "2021-03-18 09:00:00",
+      "end_date": "2021-03-23 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2021-04-27 09:00:00",
+      "end_date": "2021-05-06 09:00:00",
+      "length": 6,
+      "direction": "bullish",
+      "up_days": 5,
+      "down_days": 1,
+      "next_day_change": 0.42194092827003704
+    },
+    {
+      "start_date": "2021-05-20 09:00:00",
+      "end_date": "2021-05-25 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": -0.4405286343612369
+    },
+    {
+      "start_date": "2021-07-27 09:00:00",
+      "end_date": "2021-08-03 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 2,
+      "next_day_change": -0.5376344086021501
+    },
+    {
+      "start_date": "2021-08-19 09:00:00",
+      "end_date": "2021-08-24 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": 0.5319148936170137
+    },
+    {
+      "start_date": "2021-11-26 09:00:00",
+      "end_date": "2021-12-02 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 3,
+      "next_day_change": 0.5208333333333259
+    },
+    {
+      "start_date": "2021-12-09 09:00:00",
+      "end_date": "2021-12-16 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 2,
+      "next_day_change": -0.9999999999999898
+    },
+    {
+      "start_date": "2022-01-19 09:00:00",
+      "end_date": "2022-01-26 09:00:00",
+      "length": 6,
+      "direction": "mixed",
+      "up_days": 3,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2022-03-02 09:00:00",
+      "end_date": "2022-03-07 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": -0.5102040816326592
+    },
+    {
+      "start_date": "2022-05-10 09:00:00",
+      "end_date": "2022-05-17 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2022-07-14 09:00:00",
+      "end_date": "2022-07-19 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": -0.9852216748768572
+    },
+    {
+      "start_date": "2022-08-08 09:00:00",
+      "end_date": "2022-08-17 09:00:00",
+      "length": 7,
+      "direction": "bullish",
+      "up_days": 6,
+      "down_days": 1,
+      "next_day_change": 0.4832238233665631
+    },
+    {
+      "start_date": "2022-09-23 09:00:00",
+      "end_date": "2022-09-29 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 4,
+      "next_day_change": -0.9661835748792313
+    },
+    {
+      "start_date": "2022-11-04 09:00:00",
+      "end_date": "2022-11-11 09:00:00",
+      "length": 6,
+      "direction": "mixed",
+      "up_days": 3,
+      "down_days": 3,
+      "next_day_change": 0.4524886877828038
+    },
+    {
+      "start_date": "2023-03-14 09:00:00",
+      "end_date": "2023-03-22 09:00:00",
+      "length": 7,
+      "direction": "bullish",
+      "up_days": 4,
+      "down_days": 3,
+      "next_day_change": 0.4854368932038833
+    },
+    {
+      "start_date": "2023-04-18 09:00:00",
+      "end_date": "2023-04-21 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2023-05-17 09:00:00",
+      "end_date": "2023-05-26 09:00:00",
+      "length": 8,
+      "direction": "mixed",
+      "up_days": 4,
+      "down_days": 4,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2023-05-30 09:00:00",
+      "end_date": "2023-06-08 09:00:00",
+      "length": 7,
+      "direction": "bullish",
+      "up_days": 4,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2023-06-26 09:00:00",
+      "end_date": "2023-06-29 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": 0.5681818181818121
+    },
+    {
+      "start_date": "2023-07-05 09:00:00",
+      "end_date": "2023-07-10 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2023-07-19 09:00:00",
+      "end_date": "2023-07-25 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 4,
+      "down_days": 1,
+      "next_day_change": -0.5050505050505083
+    },
+    {
+      "start_date": "2023-10-17 09:00:00",
+      "end_date": "2023-10-20 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2023-10-31 09:00:00",
+      "end_date": "2023-11-03 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2023-12-12 09:00:00",
+      "end_date": "2023-12-15 09:00:00",
+      "length": 4,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 1,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2024-03-06 09:00:00",
+      "end_date": "2024-03-11 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": -0.8849557522123908
+    },
+    {
+      "start_date": "2024-07-25 09:00:00",
+      "end_date": "2024-08-01 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2024-08-07 09:00:00",
+      "end_date": "2024-08-14 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 2,
+      "next_day_change": -0.4878048780487809
+    },
+    {
+      "start_date": "2024-11-01 09:00:00",
+      "end_date": "2024-11-07 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 2,
+      "next_day_change": 0.588235294117645
+    },
+    {
+      "start_date": "2024-12-19 09:00:00",
+      "end_date": "2024-12-24 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": 0.9009009009008917
+    },
+    {
+      "start_date": "2025-01-03 09:00:00",
+      "end_date": "2025-01-08 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": -0.990099009900991
+    },
+    {
+      "start_date": "2025-02-04 09:00:00",
+      "end_date": "2025-02-11 09:00:00",
+      "length": 6,
+      "direction": "mixed",
+      "up_days": 3,
+      "down_days": 3,
+      "next_day_change": -0.4098360655737654
+    },
+    {
+      "start_date": "2025-02-14 09:00:00",
+      "end_date": "2025-03-06 09:00:00",
+      "length": 15,
+      "direction": "bearish",
+      "up_days": 7,
+      "down_days": 8,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2025-03-10 09:00:00",
+      "end_date": "2025-03-14 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2025-04-17 09:00:00",
+      "end_date": "2025-04-22 09:00:00",
+      "length": 4,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 1,
+      "next_day_change": 0.4048582995951566
+    },
+    {
+      "start_date": "2025-04-29 09:00:00",
+      "end_date": "2025-05-19 09:00:00",
+      "length": 12,
+      "direction": "mixed",
+      "up_days": 6,
+      "down_days": 6,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2025-06-11 09:00:00",
+      "end_date": "2025-06-16 09:00:00",
+      "length": 4,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 1,
+      "next_day_change": -0.8695652173912993
+    },
+    {
+      "start_date": "2025-07-02 09:00:00",
+      "end_date": "2025-07-07 09:00:00",
+      "length": 4,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 1,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2025-07-16 09:00:00",
+      "end_date": "2025-07-21 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": 0.7936507936507908
+    },
+    {
+      "start_date": "2025-07-31 09:00:00",
+      "end_date": "2025-08-08 09:00:00",
+      "length": 7,
+      "direction": "bearish",
+      "up_days": 3,
+      "down_days": 4,
+      "next_day_change": 0.7352941176470562
+    },
+    {
+      "start_date": "2025-08-14 09:00:00",
+      "end_date": "2025-08-20 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2025-08-25 09:00:00",
+      "end_date": "2025-09-03 09:00:00",
+      "length": 8,
+      "direction": "mixed",
+      "up_days": 4,
+      "down_days": 4,
+      "next_day_change": -0.7407407407407418
+    },
+    {
+      "start_date": "2025-09-18 09:00:00",
+      "end_date": "2025-09-30 09:00:00",
+      "length": 9,
+      "direction": "bearish",
+      "up_days": 4,
+      "down_days": 5,
+      "next_day_change": -0.7092198581560294
+    },
+    {
+      "start_date": "2025-11-14 09:00:00",
+      "end_date": "2025-11-24 09:00:00",
+      "length": 7,
+      "direction": "bearish",
+      "up_days": 3,
+      "down_days": 4,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2025-11-26 09:00:00",
+      "end_date": "2025-12-11 09:00:00",
+      "length": 10,
+      "direction": "mixed",
+      "up_days": 5,
+      "down_days": 5,
+      "next_day_change": -0.7142857142857117
+    },
+    {
+      "start_date": "2025-12-29 09:00:00",
+      "end_date": "2026-01-06 09:00:00",
+      "length": 4,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 1,
+      "next_day_change": 0.0
+    }
+  ],
+  "probabilities": {
+    "up_after_positive": 40.0593471810089,
+    "down_after_positive": 36.20178041543027,
+    "sideways_after_positive": 23.738872403560833,
+    "up_after_negative": 42.3780487804878,
+    "down_after_negative": 35.97560975609756,
+    "sideways_after_negative": 21.646341463414632
+  },
+  "risk": {
+    "avg_error_after_positive": 0.07794556445516476,
+    "max_loss_after_positive": -22.142857142857142,
+    "std_dev_after_positive": 2.3047901999391933,
+    "avg_error_after_negative": 0.17396363964624798,
+    "max_loss_after_negative": 10.619469026548668,
+    "std_dev_after_negative": 2.424207765482032
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "threshold": 1.0,
+  "total_days": 1249,
+  "total_significant_days": 395,
+  "positive_moves": 198,
+  "negative_moves": 197,
+  "next_day_stats": {
+    "after_positive": {
+      "up": 65,
+      "down": 81,
+      "sideways": 51,
+      "avg_change": -0.010806456610554599,
+      "std_change": 1.3614911547571293
+    },
+    "after_negative": {
+      "up": 76,
+      "down": 81,
+      "sideways": 40,
+      "avg_change": -0.02797363642153338,
+      "std_change": 1.3988362104000402
+    }
+  },
+  "streaks": [
+    {
+      "start_date": "2020-11-20 09:00:00",
+      "end_date": "2020-11-26 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 4,
+      "down_days": 1,
+      "next_day_change": -0.5952380952380931
+    },
+    {
+      "start_date": "2020-12-18 09:00:00",
+      "end_date": "2020-12-29 09:00:00",
+      "length": 8,
+      "direction": "bullish",
+      "up_days": 5,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2021-01-12 09:00:00",
+      "end_date": "2021-01-19 09:00:00",
+      "length": 6,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 4,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2021-01-27 09:00:00",
+      "end_date": "2021-02-03 09:00:00",
+      "length": 6,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 5,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2021-03-03 09:00:00",
+      "end_date": "2021-03-09 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 2,
+      "next_day_change": 0.60606060606061
+    },
+    {
+      "start_date": "2021-08-27 09:00:00",
+      "end_date": "2021-09-02 09:00:00",
+      "length": 5,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 2,
+      "next_day_change": 0.6578947368421018
+    },
+    {
+      "start_date": "2021-11-26 09:00:00",
+      "end_date": "2021-12-07 09:00:00",
+      "length": 7,
+      "direction": "bearish",
+      "up_days": 3,
+      "down_days": 4,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2022-01-18 09:00:00",
+      "end_date": "2022-01-21 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": -0.6451612903225823
+    },
+    {
+      "start_date": "2022-05-19 09:00:00",
+      "end_date": "2022-05-24 09:00:00",
+      "length": 4,
+      "direction": "mixed",
+      "up_days": 2,
+      "down_days": 2,
+      "next_day_change": -0.6756756756756799
+    },
+    {
+      "start_date": "2022-08-29 09:00:00",
+      "end_date": "2022-09-01 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2022-11-09 09:00:00",
+      "end_date": "2022-11-15 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 4,
+      "next_day_change": 0.0
+    },
+    {
+      "start_date": "2023-03-13 09:00:00",
+      "end_date": "2023-03-16 09:00:00",
+      "length": 4,
+      "direction": "bearish",
+      "up_days": 1,
+      "down_days": 3,
+      "next_day_change": 0.8403361344537785
+    },
+    {
+      "start_date": "2023-05-03 09:00:00",
+      "end_date": "2023-05-10 09:00:00",
+      "length": 4,
+      "direction": "bullish",
+      "up_days": 3,
+      "down_days": 1,
+      "next_day_change": 0.78125
+    },
+    {
+      "start_date": "2024-09-05 09:00:00",
+      "end_date": "2024-09-11 09:00:00",
+      "length": 5,
+      "direction": "bearish",
+      "up_days": 2,
+      "down_days": 3,
+      "next_day_change": 0.0
+    }
+  ],
+  "probabilities": {
+    "up_after_positive": 32.99492385786802,
+    "down_after_positive": 41.11675126903553,
+    "sideways_after_positive": 25.888324873096447,
+    "up_after_negative": 38.578680203045685,
+    "down_after_negative": 41.11675126903553,
+    "sideways_after_negative": 20.304568527918782
+  },
+  "risk": {
+    "avg_error_after_positive": 0.010806456610554599,
+    "max_loss_after_positive": -5.263157894736848,
+    "std_dev_after_positive": 1.3614911547571293,
+    "avg_error_after_negative": 0.02797363642153338,
+    "max_loss_after_negative": 3.9735099337748325,
+    "std_dev_after_negative": 1.3988362104000402
+  }
+}
