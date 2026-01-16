@@ -26,29 +26,28 @@ def fetch_and_analyze(tv, asset_info, history_bars, interval):
                 n_bars=history_bars
             )
             if df is not None and not df.empty:
-                res = processor.analyze_asset(df)
-                if res and res['status'] == 'MATCH_FOUND':
+                results_list = processor.analyze_asset(df)  # Returns list now
+                # Add symbol to each result
+                for res in results_list:
                     res['symbol'] = symbol
-                    return res
-                return None
+                return results_list  # Return all patterns
         except Exception as e:
             time.sleep(1)
             
-    return None
+    return []  # Return empty list on failure
 
 
 from tabulate import tabulate
 
 
 from tabulate import tabulate
+
+
 
 def generate_report(results):
-    print("\n" + "="*80)
-    print("📊 FRACTAL PREDICTION REPORT")
-    print("="*80)
-    
-    # Define Columns
-    headers = ["Symbol", "Price", "Streak", "Predict", "Exp. %Chg", "Prob.", "Max Risk", "Events"]
+    print("\n" + "="*95)
+    print("📊 FRACTAL PREDICTION REPORT (High Confidence Only)")
+    print("="*95)
     
     groups = {
         "GROUP_A_THAI": "🇹🇭 THAI MARKET (SET100+)",
@@ -57,59 +56,82 @@ def generate_report(results):
     }
     
     for group_key, title in groups.items():
-        # 1. Filter Logic: Events >= 5
-        group_data = [r for r in results if r['group'] == group_key and r['matches'] >= 5]
+        # -------------------------------------------------------------
+        # 1. Quality Filtering (The Guardrails)
+        # -------------------------------------------------------------
+        # Rule 1: Minimum Matches >= 10
+        # Rule 2: Significance Threshold >= 60% (Prob)
         
-        if not group_data:
+        filtered_data = []
+        for r in results:
+            if r['group'] != group_key: continue
+            
+            # Identify dominant prob
+            avg_ret = r['avg_return']
+            if avg_ret > 0: prob = r['bull_prob']
+            elif avg_ret < 0: prob = r['bear_prob']
+            else: prob = 50.0
+            
+            # Trust processor.py's adaptive filtering
+            # We display EVERYTHING that processor found (Matched logic)
+            # No prob threshold (User wants to see raw data)
+            
+            # Add prob to dict for sorting
+            r['_sort_prob'] = prob
+            filtered_data.append(r)
+        
+        if not filtered_data:
+            print(f"\n{title}")
+            print("   (No high-confidence signals found)")
             continue
             
         print(f"\n{title}")
-        table_rows = []
         
-        # Sort by: 1. Probability (Dominant) DESC, 2. Events DESC
-        def get_sort_key(x):
-            avg_ret = x['avg_return']
-            if avg_ret > 0: prob = x['bull_prob']
-            elif avg_ret < 0: prob = x['bear_prob']
-            else: prob = 50.0
-            return (prob, x['matches'])
+        # -------------------------------------------------------------
+        # 2. Sorting (Group by Symbol, then Prob% within symbol)
+        # -------------------------------------------------------------
+        filtered_data.sort(key=lambda x: (x['symbol'], -x['_sort_prob'], -x['matches']))
+        
+        
+        # 3. Table Layout
+        # Columns (Left-to-Right): Symbol, Price, Threshold, Chg%, Pattern, Prob, Stats, Exp.Move
+        header = f"{'Symbol':<10} {'Price':>10} {'Threshold':>12} {'Chg%':>10} {'Pattern':^12} {'Prob.':>8} {'Stats':>12} {'Exp. Move':>12}"
+        
+        print("-" * 95)
+        print(header)
+        print("-" * 95)
 
-        group_data.sort(key=get_sort_key, reverse=True)
-        
-        for r in group_data:
-            # Logic: Predict based on Mean Return
+        for r in filtered_data:
+            # Logic: Predict & Prob
             avg_ret = r['avg_return']
             if avg_ret > 0:
-                predict = "🟢 UP"
+                # guess = "🟢 UP"  # Hidden
                 prob_val = r['bull_prob']
+                win_count = int(r['matches'] * (prob_val / 100))
             elif avg_ret < 0:
-                predict = "🔴 DOWN"
+                # guess = "🔴 DOWN"  # Hidden
                 prob_val = r['bear_prob']
+                win_count = int(r['matches'] * (prob_val / 100))
             else:
-                predict = "⚪ NEUTRAL"
+                # guess = "⚪ NEUTRAL"  # Hidden
                 prob_val = 50.0
-                
-            # Logic: Streak Icon
-            s_val = r['streak']
-            if s_val > 0: s_str = f"🟢 Up {s_val}"
-            elif s_val < 0: s_str = f"🔴 Down {abs(s_val)}"
-            else: s_str = "⚪ Quiet"
+                win_count = 0
             
-            # Format row
-            row = [
-                r['symbol'],
-                f"{r['price']:.2f}",
-                s_str,
-                predict,
-                f"{avg_ret:+.2f}%",     # Signed Exp. %Chg
-                f"{prob_val:.0f}%",     # Dominant Prob
-                f"{r['max_risk']:.2f}%",
-                r['matches']
-            ]
-            table_rows.append(row)
+            # Get hybrid pattern (context + current)
+            pattern = r.get('pattern_display', '.')
             
-        print(tabulate(table_rows, headers=headers, tablefmt="simple", stralign="right"))
-        print("-" * 80)
+             # Formatting
+            price_str = f"{r['price']:,.2f}"
+            thresh_str = f"±{r['threshold']:.2f}%"
+            chg_str   = f"{r['change_pct']:+.2f}%"
+            prob_str  = f"{int(prob_val)}%"
+            stats_str = f"{win_count}/{r['matches']}"
+            exp_str   = f"{avg_ret:+.2f}%"
+            
+            # Print Row (Hybrid pattern display)
+            print(f"{r['symbol']:<10} {price_str:>10} {thresh_str:>12} {chg_str:>10} {pattern:^12} {prob_str:>8} {stats_str:>12} {exp_str:>12}")
+
+        print("-" * 95)
 
     print("\n✅ Report Generated.")
 
@@ -137,9 +159,10 @@ def main():
             sys.stdout.write(f"\r   [{i+1}/{len(assets)}] Scanning {asset['symbol']}...")
             sys.stdout.flush()
             
-            res = fetch_and_analyze(tv, asset, history, interval)
+            pattern_results = fetch_and_analyze(tv, asset, history, interval)
             
-            if res:
+            # pattern_results is now a list (can be empty or have multiple items)
+            for res in pattern_results:
                 res['group'] = group_name
                 all_results.append(res)
             
