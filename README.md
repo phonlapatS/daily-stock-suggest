@@ -1,6 +1,6 @@
 # Stock Prediction System (v1.1)
 
-📊 **Fractal N+1 Prediction System - Pure Data-Driven**
+📊 **Predict N+1 System - Pure Data-Driven**
 
 > **🆕 Version 1.1 Updates (2026-01-17):**
 > - ✅ **Multi-Pattern Support:** แสดงผลหลาย Pattern ต่อหุ้น 1 ตัว (เช่น PTT อาจมีทั้งมุมมองขึ้น `+` และลง `-`)
