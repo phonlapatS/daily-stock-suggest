@@ -145,8 +145,20 @@ def generate_report(results):
         # -------------------------------------------------------------
         filtered_data.sort(key=lambda x: (-x['_sort_prob'], -x['matches'], x['symbol']))
         
+        # -------------------------------------------------------------
+        # 3. Deduplication (Keep best pattern per symbol)
+        # -------------------------------------------------------------
+        seen_symbols = set()
+        deduplicated_data = []
+        for r in filtered_data:
+            if r['symbol'] not in seen_symbols:
+                seen_symbols.add(r['symbol'])
+                deduplicated_data.append(r)
         
-        # 3. Table Layout
+        filtered_data = deduplicated_data
+        
+        
+        # 4. Table Layout
         # Columns (Left-to-Right): Symbol, Price, Chg%, Threshold, Pattern, Chance, Prob, Stats, Exp.Move
         # Chance column: Left align (<11) so emojis line up vertically
         header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>12} {'Exp. Move':>12}"
