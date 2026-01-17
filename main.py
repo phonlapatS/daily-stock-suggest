@@ -66,7 +66,33 @@ def generate_report(results):
         for r in results:
             if r['group'] != group_key: continue
             
-            # Identify dominant prob
+            # --- CONTEXT AWARE FILTER ---
+            # To avoid confusion (e.g., showing '-' patterns when today is clearly '+')
+            # we filter patterns to match the current day's price action context.
+            
+            current_chg = r['change_pct']
+            threshold   = r['threshold']
+            pattern     = r.get('pattern_display', '')
+            
+            # 1. If today is clearly UP (+), only show patterns ending in '+'
+            if current_chg > threshold:
+                if not pattern.endswith('+'):
+                    continue
+            
+            # 2. If today is clearly DOWN (-), only show patterns ending in '-'
+            elif current_chg < -threshold:
+                if not pattern.endswith('-'):
+                    continue
+            
+            # 3. If today is Neutral (.), showing patterns is tricky.
+            # Usually fractal system yields NO signal for neutral days.
+            # But if a pattern exactly matches 'quiet', we might show it (rare).
+            else:
+                 # If implied current pattern is '.', but result is '+', ignore.
+                 # Actually, quiet days usually don't trigger the scanner in processor.py 
+                 # because we look for "Breakout".
+                 pass
+
             avg_ret = r['avg_return']
             if avg_ret > 0: prob = r['bull_prob']
             elif avg_ret < 0: prob = r['bear_prob']
@@ -88,32 +114,33 @@ def generate_report(results):
         print(f"\n{title}")
         
         # -------------------------------------------------------------
-        # 2. Sorting (Group by Symbol, then Prob% within symbol)
+        # 2. Sorting (Priority 1: Prob%, Priority 2: Matches)
         # -------------------------------------------------------------
-        filtered_data.sort(key=lambda x: (x['symbol'], -x['_sort_prob'], -x['matches']))
+        filtered_data.sort(key=lambda x: (-x['_sort_prob'], -x['matches'], x['symbol']))
         
         
         # 3. Table Layout
-        # Columns (Left-to-Right): Symbol, Price, Threshold, Chg%, Pattern, Prob, Stats, Exp.Move
-        header = f"{'Symbol':<10} {'Price':>10} {'Threshold':>12} {'Chg%':>10} {'Pattern':^12} {'Prob.':>8} {'Stats':>12} {'Exp. Move':>12}"
+        # Columns (Left-to-Right): Symbol, Price, Threshold, Chg%, Pattern, Chance, Prob, Stats, Exp.Move
+        # Chance column: Left align (<11) so emojis line up vertically
+        header = f"{'Symbol':<10} {'Price':>10} {'Threshold':>12} {'Chg%':>10} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>12} {'Exp. Move':>12}"
         
-        print("-" * 95)
+        print("-" * 105)
         print(header)
-        print("-" * 95)
+        print("-" * 105)
 
         for r in filtered_data:
             # Logic: Predict & Prob
             avg_ret = r['avg_return']
             if avg_ret > 0:
-                # guess = "🟢 UP"  # Hidden
+                chance = "🟢 UP"
                 prob_val = r['bull_prob']
                 win_count = int(r['matches'] * (prob_val / 100))
             elif avg_ret < 0:
-                # guess = "🔴 DOWN"  # Hidden
+                chance = "🔴 DOWN"
                 prob_val = r['bear_prob']
                 win_count = int(r['matches'] * (prob_val / 100))
             else:
-                # guess = "⚪ NEUTRAL"  # Hidden
+                chance = "⚪ SIDE"
                 prob_val = 50.0
                 win_count = 0
             
@@ -129,7 +156,7 @@ def generate_report(results):
             exp_str   = f"{avg_ret:+.2f}%"
             
             # Print Row (Hybrid pattern display)
-            print(f"{r['symbol']:<10} {price_str:>10} {thresh_str:>12} {chg_str:>10} {pattern:^12} {prob_str:>8} {stats_str:>12} {exp_str:>12}")
+            print(f"{r['symbol']:<10} {price_str:>10} {thresh_str:>12} {chg_str:>10} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>12} {exp_str:>12}")
 
         print("-" * 95)
 
