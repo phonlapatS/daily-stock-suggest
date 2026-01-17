@@ -43,6 +43,29 @@ from tabulate import tabulate
 from tabulate import tabulate
 
 
+def pass_filter(prob, stats, old_pass: bool):
+    """
+    ตรวจสอบว่า Pattern ผ่านเกณฑ์ Statistical Reliability หรือไม่
+    
+    Args:
+        prob: Probability (%) ของ Pattern
+        stats: Sample Size (จำนวนครั้งที่เกิด)
+        old_pass: ผลการกรองเดิม (min_matches ตาม pattern length)
+    
+    Returns:
+        bool: True ถ้าผ่านเกณฑ์, False ถ้าไม่ผ่าน
+    
+    เกณฑ์:
+    - Prob ≥ 80% → ต้องมี Stats ≥ 50 (เข้มงวด)
+    - Prob ≥ 70% → ต้องมี Stats ≥ 30 (ปานกลาง)
+    - Prob < 70% → ใช้เกณฑ์เดิม (10/5/3 ตาม pattern length)
+    """
+    if prob >= 80:
+        return stats >= 50  # High confidence ต้องมีข้อมูลเยอะ (40-60 range → เลือก 50)
+    if prob >= 70:
+        return stats >= 30  # Medium-high confidence (25-40 range → เลือก 30)
+    return old_pass  # Low-medium confidence ใช้เกณฑ์เดิม
+
 
 def generate_report(results):
     print("\n" + "="*95)
@@ -98,9 +121,13 @@ def generate_report(results):
             elif avg_ret < 0: prob = r['bear_prob']
             else: prob = 50.0
             
-            # Trust processor.py's adaptive filtering
-            # We display EVERYTHING that processor found (Matched logic)
-            # No prob threshold (User wants to see raw data)
+            # Statistical Reliability Filter
+            # Apply probability-based sample size requirements
+            stats = r['matches']
+            old_pass = True  # processor.py ผ่าน min_matches มาแล้ว
+            
+            if not pass_filter(prob, stats, old_pass):
+                continue  # Skip patterns ที่ไม่ผ่านเกณฑ์ความน่าเชื่อถือ
             
             # Add prob to dict for sorting
             r['_sort_prob'] = prob
@@ -120,9 +147,9 @@ def generate_report(results):
         
         
         # 3. Table Layout
-        # Columns (Left-to-Right): Symbol, Price, Threshold, Chg%, Pattern, Chance, Prob, Stats, Exp.Move
+        # Columns (Left-to-Right): Symbol, Price, Chg%, Threshold, Pattern, Chance, Prob, Stats, Exp.Move
         # Chance column: Left align (<11) so emojis line up vertically
-        header = f"{'Symbol':<10} {'Price':>10} {'Threshold':>12} {'Chg%':>10} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>12} {'Exp. Move':>12}"
+        header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>12} {'Exp. Move':>12}"
         
         print("-" * 105)
         print(header)
@@ -155,8 +182,8 @@ def generate_report(results):
             stats_str = f"{win_count}/{r['matches']}"
             exp_str   = f"{avg_ret:+.2f}%"
             
-            # Print Row (Hybrid pattern display)
-            print(f"{r['symbol']:<10} {price_str:>10} {thresh_str:>12} {chg_str:>10} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>12} {exp_str:>12}")
+            # Print Row (Swapped: Chg% before Threshold)
+            print(f"{r['symbol']:<10} {price_str:>10} {chg_str:>10} {thresh_str:>12} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>12} {exp_str:>12}")
 
         print("-" * 95)
 

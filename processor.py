@@ -119,7 +119,7 @@ def analyze_asset(df):
             bear_prob = (bear_count / total) * 100
             avg_return = np.mean(future_returns) * 100
             
-            # Simple filter: Just need enough data (adaptive)
+            # Pattern ที่ผ่าน min_matches → เพิ่มเข้า results (กรองเพิ่มที่ main.py)
             results.append({
                 'status': 'MATCH_FOUND',
                 'symbol': 'Unknown',
