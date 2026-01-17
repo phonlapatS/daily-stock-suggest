@@ -6,6 +6,7 @@
 > - ✅ **Flexible Filtering:** ย้าย filter logic ไป `main.py` เพื่อความยืดหยุ่นในการปรับเกณฑ์
 > - ✅ **Stricter Thresholds:** Prob ≥80% ต้องมี Stats ≥50, Prob ≥70% ต้องมี Stats ≥30
 > - ✅ **Better UX:** สลับ Chg% กับ Threshold (Chg% แสดงก่อนเพื่อเห็นวันนี้ทันที)
+> - ✅ **Deduplication:** กรอง Symbol ซ้ำออก (เก็บเฉพาะ Pattern ที่ดีที่สุดต่อหุ้น)
 > - ✅ **Maintainability:** แยก concern ระหว่าง pattern generation และ display filtering
 
 > **Version 1.1 Updates (2026-01-17):**
