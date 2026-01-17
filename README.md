@@ -1,13 +1,20 @@
-# Stock Prediction System (v1.1)
+# Stock Prediction System (v1.1.1)
 
 📊 **Fractal N+1 Prediction System - Pure Data-Driven**
 
-> **🆕 Version 1.1 Updates (2026-01-17):**
+> **🆕 Version 1.1.1 Updates (2026-01-18):**
+> - ✅ **Flexible Filtering:** ย้าย filter logic ไป `main.py` เพื่อความยืดหยุ่นในการปรับเกณฑ์
+> - ✅ **Stricter Thresholds:** Prob ≥80% ต้องมี Stats ≥50, Prob ≥70% ต้องมี Stats ≥30
+> - ✅ **Better UX:** สลับ Chg% กับ Threshold (Chg% แสดงก่อนเพื่อเห็นวันนี้ทันที)
+> - ✅ **Maintainability:** แยก concern ระหว่าง pattern generation และ display filtering
+
+> **Version 1.1 Updates (2026-01-17):**
 > - ✅ **Multi-Pattern Support:** แสดงผลหลาย Pattern ต่อหุ้น 1 ตัว (เช่น PTT อาจมีทั้งมุมมองขึ้น `+` และลง `-`)
 > - ✅ **Independent Stats:** แยกสถิติของแต่ละ Pattern อิสระ 100% (Prob/Risk ไม่ปนกัน)
 > - ✅ **Chance Indicators:** เพิ่ม Column `Chance` บอกทิศทางชัดเจน (🟢 UP, 🔴 DOWN, ⚪ SIDE)
 > - ✅ **Context-Aware Filter:** กรอง Pattern ที่ขัดแย้งกับราคาปัจจุบันออกอัตโนมัติ (ลดความสับสน)
 > - ✅ **Smart Sorting:** เรียงลำดับตามความน่าจะเป็น (Prob %) สูงสุดก่อนแบบ Leaderboard
+
 
 ## 💡 Concept
 
