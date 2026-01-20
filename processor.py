@@ -53,7 +53,7 @@ def analyze_asset(df):
         
         # Scan ALL history for patterns (no limit for better accuracy)
         scan_start = 5  # Start after having enough data
-        threshold_series = effective_std * 2.0
+        threshold_series = effective_std * 1.25  # ปรับเป็น 1.25 SD เพื่อลด overfitting
         
         for i in range(scan_start, history_len):
             # Get 4-day window ending at day i
@@ -98,14 +98,8 @@ def analyze_asset(df):
                     ret = (price_next_day - price_at_pattern_end) / price_at_pattern_end
                     future_returns.append(ret)
             
-            # Adaptive Threshold logic
-            # Pure 1-2 char patterns: Need high statistical significance (>=10 matches)
-            # Complex 3+ char patterns: Rare, so we accept fewer matches (>=3 or 5)
-            min_matches = 10
-            if len(pattern_str) == 3:
-                min_matches = 5
-            elif len(pattern_str) >= 4:
-                min_matches = 3
+            # Flexible Min Matches: อย่างน้อย 0.1% ของข้อมูล หรือ 3 ครั้ง
+            min_matches = max(3, int(history_len * 0.001))  # 5000 bars × 0.001 = 5
                 
             if not future_returns or len(future_returns) < min_matches:
                 continue
@@ -128,6 +122,7 @@ def analyze_asset(df):
                 'threshold': current_std * 100,
                 'pattern_display': pattern_str,
                 'matches': total,
+                'total_bars': history_len,  # จำนวนวันทั้งหมดที่วิเคราะห์
                 'bull_prob': bull_prob,
                 'bear_prob': bear_prob,
                 'avg_return': avg_return,

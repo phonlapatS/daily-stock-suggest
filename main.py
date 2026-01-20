@@ -129,6 +129,10 @@ def generate_report(results):
             if not pass_filter(prob, stats, old_pass):
                 continue  # Skip patterns ที่ไม่ผ่านเกณฑ์ความน่าเชื่อถือ
             
+            # Filter: Stats >= 30 (สำหรับความน่าเชื่อถือ)
+            if r['matches'] < 30:
+                continue
+            
             # Add prob to dict for sorting
             r['_sort_prob'] = prob
             filtered_data.append(r)
@@ -199,9 +203,17 @@ def generate_report(results):
 
         print("-" * 95)
 
+    # Export to DataFrame
+    import pandas as pd
+    df = pd.DataFrame(results)
+    df.to_csv('data/pattern_results.csv', index=False, encoding='utf-8-sig')
+    print(f"\n💾 Saved {len(results)} patterns to data/pattern_results.csv")
     print("\n✅ Report Generated.")
 
 def main():
+    import time
+    start_time = time.time()
+    
     print("🚀 Starting Fractal N+1 Prediction System...")
     
     # Connect TV
@@ -212,6 +224,14 @@ def main():
         return
 
     all_results = []
+    
+    # Fetch Summary Tracking
+    fetch_summary = {
+        'total': 0,
+        'success': 0,
+        'failed': 0,
+        'failed_symbols': []
+    }
     
     # Iterate through Asset Groups
     for group_name, settings in config.ASSET_GROUPS.items():
@@ -225,20 +245,51 @@ def main():
             sys.stdout.write(f"\r   [{i+1}/{len(assets)}] Scanning {asset['symbol']}...")
             sys.stdout.flush()
             
+            fetch_summary['total'] += 1
             pattern_results = fetch_and_analyze(tv, asset, history, interval)
             
             # pattern_results is now a list (can be empty or have multiple items)
-            for res in pattern_results:
-                res['group'] = group_name
-                all_results.append(res)
+            if pattern_results:
+                fetch_summary['success'] += 1
+                for res in pattern_results:
+                    res['group'] = group_name
+                    all_results.append(res)
+            else:
+                fetch_summary['failed'] += 1
+                fetch_summary['failed_symbols'].append(asset['symbol'])
             
             time.sleep(0.5) # Rate Limit
+    
+    # Print Fetch Summary
+    print("\n")
+    print("=" * 50)
+    print("📊 FETCH SUMMARY")
+    print("=" * 50)
+    success_rate = (fetch_summary['success'] / fetch_summary['total'] * 100) if fetch_summary['total'] > 0 else 0
+    print(f"✅ Success: {fetch_summary['success']}/{fetch_summary['total']} ({success_rate:.1f}%)")
+    print(f"❌ Failed:  {fetch_summary['failed']}")
+    if fetch_summary['failed_symbols']:
+        # Show first 10 failed symbols
+        shown = fetch_summary['failed_symbols'][:10]
+        print(f"   Failed symbols: {', '.join(shown)}", end='')
+        if len(fetch_summary['failed_symbols']) > 10:
+            print(f" ... and {len(fetch_summary['failed_symbols']) - 10} more")
+        else:
+            print()
+    print("=" * 50)
 
     # Final Report
     if all_results:
         generate_report(all_results)
     else:
         print("\n❌ No matching patterns found in any asset.")
+    
+    # Print execution time
+    end_time = time.time()
+    duration = end_time - start_time
+    minutes = int(duration // 60)
+    seconds = int(duration % 60)
+    print(f"\n⏱️ Total execution time: {minutes}m {seconds}s")
 
 if __name__ == "__main__":
     main()

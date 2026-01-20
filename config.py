@@ -33,19 +33,28 @@ ASSET_GROUPS = {
     "GROUP_A_THAI": {
         "description": "Thai Market (SET100+)",
         "interval": Interval.in_daily,
-        "history_bars": 3000,
+        "history_bars": 5000,
         "assets": [{'symbol': s, 'exchange': 'SET'} for s in THAI_STOCKS]
     },
     "GROUP_B_US": {
         "description": "US Market (NASDAQ)",
         "interval": Interval.in_daily,
-        "history_bars": 3000,
+        "history_bars": 5000,
         "assets": [{'symbol': s, 'exchange': 'NASDAQ'} for s in NASDAQ_STOCKS]
     },
     "GROUP_C_METALS": {
         "description": "Intraday Metals (Gold/Silver)",
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
+        "assets": [
+            {'symbol': 'XAUUSD', 'exchange': 'OANDA'}, 
+            {'symbol': 'XAGUSD', 'exchange': 'OANDA'}
+        ]
+    },
+    "GROUP_D_METALS_15M": {
+        "description": "Intraday Metals 15min (Gold/Silver)",
+        "interval": Interval.in_15_minute,
+        "history_bars": 5000,  # ~2.5 เดือน
         "assets": [
             {'symbol': 'XAUUSD', 'exchange': 'OANDA'}, 
             {'symbol': 'XAGUSD', 'exchange': 'OANDA'}
