@@ -72,13 +72,19 @@ def generate_report(results):
     print("📊 FRACTAL PREDICTION REPORT (High Confidence Only)")
     print("="*95)
     
-    groups = {
-        "GROUP_A_THAI": "🇹🇭 THAI MARKET (SET100+)",
-        "GROUP_B_US": "🇺🇸 US MARKET (NASDAQ)",
-        "GROUP_C_METALS": "⚡ INTRADAY METALS (Gold/Silver)"
-    }
+    # Sort keys to ensure consistent order (Thai -> US -> Metals -> China -> Indices)
+    # Custom sort order: GROUP_A, GROUP_B, GROUP_E, GROUP_C, GROUP_D, GROUP_F
     
-    for group_key, title in groups.items():
+    for group_key, settings in config.ASSET_GROUPS.items():
+        title = settings['description'].upper()
+        
+        # Add Emoji based on group key
+        if "THAI" in group_key: title = f"🇹🇭 {title}"
+        elif "US" in group_key: title = f"🇺🇸 {title}"
+        elif "CHINA" in group_key: title = f"🇨🇳 {title}"
+        elif "INDICES" in group_key: title = f"🌍 {title}"
+        elif "METALS" in group_key: title = f"⚡ {title}"
+
         # -------------------------------------------------------------
         # 1. Quality Filtering (The Guardrails)
         # -------------------------------------------------------------
@@ -150,7 +156,7 @@ def generate_report(results):
         filtered_data.sort(key=lambda x: (-x['_sort_prob'], -x['matches'], x['symbol']))
         
         # -------------------------------------------------------------
-        # 3. Deduplication (Keep best pattern per symbol)
+        # 3. Deduplication (ลบแถวซ้ำ / บัคแถวซ้ำ - เก็บ Pattern ที่ดีที่สุด 1 อันต่อหุ้น)
         # -------------------------------------------------------------
         seen_symbols = set()
         deduplicated_data = []
@@ -165,11 +171,11 @@ def generate_report(results):
         # 4. Table Layout
         # Columns (Left-to-Right): Symbol, Price, Chg%, Threshold, Pattern, Chance, Prob, Stats, Exp.Move
         # Chance column: Left align (<11) so emojis line up vertically
-        header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>12} {'Exp. Move':>12}"
+        header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>20} {'Exp. Move':>12}"
         
-        print("-" * 105)
+        print("-" * 115)
         print(header)
-        print("-" * 105)
+        print("-" * 115)
 
         for r in filtered_data:
             # Logic: Predict & Prob
@@ -195,13 +201,13 @@ def generate_report(results):
             thresh_str = f"±{r['threshold']:.2f}%"
             chg_str   = f"{r['change_pct']:+.2f}%"
             prob_str  = f"{int(prob_val)}%"
-            stats_str = f"{win_count}/{r['matches']}"
+            stats_str = f"{win_count}/{r['matches']} ({r.get('total_bars', '?')})"
             exp_str   = f"{avg_ret:+.2f}%"
             
             # Print Row (Swapped: Chg% before Threshold)
-            print(f"{r['symbol']:<10} {price_str:>10} {chg_str:>10} {thresh_str:>12} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>12} {exp_str:>12}")
+            print(f"{r['symbol']:<10} {price_str:>10} {chg_str:>10} {thresh_str:>12} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>20} {exp_str:>12}")
 
-        print("-" * 95)
+        print("-" * 115)
 
     # Export to DataFrame
     import pandas as pd
