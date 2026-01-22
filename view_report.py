@@ -82,7 +82,18 @@ def view_report(symbol=None):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        view_report(sys.argv[1])
+        arg = sys.argv[1].lower()
+        if arg == '--all' or arg == '-a':
+            # Load data once to get symbols
+            stats, _ = load_data()
+            symbols = stats['Symbol'].unique()
+            print(f"🚀 Generating Reports for ALL {len(symbols)} Symbols...\n")
+            
+            for sym in symbols:
+                view_report(sym)
+                print("\n" + "#" * 80 + "\n")
+        else:
+            view_report(sys.argv[1])
     else:
-        print("Usage: python view_report.py [SYMBOL]")
+        print("Usage: python view_report.py [SYMBOL] or [--all]")
         view_report()
