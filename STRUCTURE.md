@@ -121,6 +121,11 @@ python main.py
 - Interval: 15min
 - History: **5000 bars**
 
+**GROUP_E_CHINA:**
+- 13 ADRs (Tech & Economy)
+- Interval: 1D
+- History: **5000 bars**
+
 ---
 
 ## 📈 Version History
