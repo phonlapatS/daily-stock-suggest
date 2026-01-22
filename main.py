@@ -27,20 +27,19 @@ def fetch_and_analyze(tv, asset_info, history_bars, interval):
             )
             if df is not None and not df.empty:
                 results_list = processor.analyze_asset(df)  # Returns list now
+                
+                # Use readable name if available (e.g., MOUTAI instead of 600519)
+                display_name = asset_info.get('name', symbol)
+                
                 # Add symbol to each result
                 for res in results_list:
-                    res['symbol'] = symbol
+                    res['symbol'] = display_name
                 return results_list  # Return all patterns
         except Exception as e:
             time.sleep(1)
             
     return []  # Return empty list on failure
 
-
-from tabulate import tabulate
-
-
-from tabulate import tabulate
 
 
 def pass_filter(prob, stats, old_pass: bool):
@@ -171,7 +170,7 @@ def generate_report(results):
         # 4. Table Layout
         # Columns (Left-to-Right): Symbol, Price, Chg%, Threshold, Pattern, Chance, Prob, Stats, Exp.Move
         # Chance column: Left align (<11) so emojis line up vertically
-        header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>20} {'Exp. Move':>12}"
+        header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>22} {'Exp. Move':>12}"
         
         print("-" * 115)
         print(header)
@@ -201,13 +200,30 @@ def generate_report(results):
             thresh_str = f"±{r['threshold']:.2f}%"
             chg_str   = f"{r['change_pct']:+.2f}%"
             prob_str  = f"{int(prob_val)}%"
-            stats_str = f"{win_count}/{r['matches']} ({r.get('total_bars', '?')})"
+            
+            # Fix stats_str formatting to remove extra spaces and ensure alignment
+            # Force integers to avoid any string weirdness
+            try:
+                m_matches = int(r['matches'])
+                m_total = int(r.get('total_bars', 0))
+                m_win = win_count # already int
+                stats_str = f"{m_win}/{m_matches} ({m_total})"
+            except:
+                # Fallback if something is wrong
+                stats_str = f"{win_count}/{r['matches']} ({r.get('total_bars','?')})"
+            
+            # Strict Exp. Move Alignment
+            # Use fixed width inside formatting to ensuring signs line up
+            # e.g., "+0.76%"
             exp_str   = f"{avg_ret:+.2f}%"
             
             # Print Row (Swapped: Chg% before Threshold)
-            print(f"{r['symbol']:<10} {price_str:>10} {chg_str:>10} {thresh_str:>12} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>20} {exp_str:>12}")
+            # Increased Stats column width to 22
+            # Exp Move >12 ensures right alignment
+            print(f"{r['symbol']:<10} {price_str:>10} {chg_str:>10} {thresh_str:>12} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>22} {exp_str:>12}")
 
         print("-" * 115)
+
 
     # Export to DataFrame
     import pandas as pd
