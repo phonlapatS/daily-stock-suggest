@@ -166,6 +166,66 @@ def _calculate_max_streak(bool_series: pd.Series) -> int:
 
 
 # ============================================================
+# STREAK PROFILE CALCULATION (Survival Analysis)
+# ============================================================
+def calculate_streak_profile(df: pd.DataFrame, symbol: str, threshold_pct: float) -> List[Dict]:
+    """
+    Calculate Streak Survival Profile for a stock.
+    Returns probability of streak continuing from n → n+1 days.
+    """
+    close = df['close']
+    pct_change = close.pct_change()
+    
+    # Determine Direction (same logic as Pattern detection)
+    conditions = [
+        (pct_change > threshold_pct),
+        (pct_change < -threshold_pct)
+    ]
+    direction = np.select(conditions, [1, -1], default=0)
+    
+    # Strict Mode: Use full dataframe, including 0s
+    work_df = pd.DataFrame({'direction': direction})
+    # work_df = work_df[work_df['direction'] != 0].copy()  <-- REMOVED FILTER
+    
+    if work_df.empty:
+        return []
+    
+    # Identify Streaks (group consecutive same directions)
+    work_df['grp_change'] = (work_df['direction'] != work_df['direction'].shift(1))
+    work_df['streak_id'] = work_df['grp_change'].cumsum()
+    
+    # Calculate max length of each streak
+    streak_summary = work_df.groupby(['streak_id', 'direction']).size().reset_index(name='max_length')
+    
+    # Survival Calculation
+    results = []
+    for direction_val in [1, -1]:
+        streak_type = 'UP' if direction_val == 1 else 'DOWN'
+        sub_data = streak_summary[streak_summary['direction'] == direction_val]
+        
+        if sub_data.empty:
+            continue
+        
+        max_days = sub_data['max_length'].max()
+        
+        for n in range(1, max_days + 1):
+            reached = (sub_data['max_length'] >= n).sum()
+            continued = (sub_data['max_length'] >= n + 1).sum()
+            prob = (continued / reached * 100) if reached > 0 else 0.0
+            
+            results.append({
+                'Symbol': symbol,
+                'Streak_Type': streak_type,
+                'Day_Count_n': n,
+                'Reached_Count': reached,
+                'Continued_to_n_plus_1': continued,
+                'Next_Day_Prob_Percent': round(prob, 2)
+            })
+    
+    return results
+
+
+# ============================================================
 # PATTERN SCANNING
 # ============================================================
 def scan_pattern(df: pd.DataFrame, pattern: str, dna: Dict) -> Dict:
@@ -203,16 +263,27 @@ def scan_pattern(df: pd.DataFrame, pattern: str, dna: Dict) -> Dict:
             returns.append(next_ret)
 
     total = len(returns)
-    wins = sum(1 for r in returns if r > 0)
-    prob = (wins / total * 100) if total > 0 else 0
-    avg_return = (sum(returns) / total * 100) if total > 0 else 0.0
+    up_count = sum(1 for r in returns if r > 0)
+    down_count = sum(1 for r in returns if r < 0)
+    
+    # Determine which outcome is more frequent
+    if up_count >= down_count:
+        dominant_direction = 'UP'
+        dominant_count = up_count
+        prob = (up_count / total * 100) if total > 0 else 0
+    else:
+        dominant_direction = 'DOWN'
+        dominant_count = down_count
+        prob = (down_count / total * 100) if total > 0 else 0
     
     return {
-        'wins': wins,
+        'up_count': up_count,
+        'down_count': down_count,
         'total': total,
+        'dominant_direction': dominant_direction,
+        'dominant_count': dominant_count,
         'prob': f"{int(prob)}%",
-        'stats': f"{wins}/{total} ({dna['total_bars']})",
-        'avg_return': avg_return
+        'stats': f"{dominant_count}/{total} ({dna['total_bars']})"
     }
 
 
@@ -238,6 +309,7 @@ def process_all_assets() -> pd.DataFrame:
     print("📊 Dynamic pattern generation enabled (based on stock DNA)")
     
     all_results = []
+    all_streak_results = []  # NEW: For Streak Profile
     total_assets = 0
     success_count = 0
     
@@ -294,14 +366,11 @@ def process_all_assets() -> pd.DataFrame:
                 if stats['total'] == 0:
                     continue
                 
-                # Determine Chance
-                avg_ret = stats['avg_return']
-                if avg_ret > 0:
+                # Determine Chance (based on more frequent outcome)
+                if stats['dominant_direction'] == 'UP':
                     chance = "🟢 UP"
-                elif avg_ret < 0:
-                    chance = "🔴 DOWN"
                 else:
-                    chance = "⚪ SIDE"
+                    chance = "🔴 DOWN"
                 
                 # Build result row
                 row = {
@@ -318,32 +387,59 @@ def process_all_assets() -> pd.DataFrame:
                 }
                 all_results.append(row)
             
+            # ============================================================
+            # 2. STREAK PROFILE GENERATION (New)
+            # ============================================================
+            try:
+                streak_stats = calculate_streak_profile(df, display_name, dna['threshold_pct'])
+                all_streak_results.extend(streak_stats)
+            except Exception as e:
+                print(f"   ⚠️ Error generating streak profile: {e}")
+
             time.sleep(0.3)  # Rate limit
 
             # Incremental Save (Every 5 assets)
-            if success_count % 5 == 0 and all_results:
-                columns = [
-                    'Symbol', 'Threshold', 'Max_Streak_Pos', 'Max_Streak_Neg',
-                    'Pattern', 'Pattern_Name', 'Category', 'Chance', 'Prob', 'Stats'
-                ]
-                try:
-                    temp_df = pd.DataFrame(all_results, columns=columns)
-                    temp_df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
-                except Exception as e:
-                    print(f"   ⚠️ Could not save intermediate CSV: {e}")
+            if success_count % 5 == 0:
+                # Save Master Stats
+                if all_results:
+                    columns_master = [
+                        'Symbol', 'Threshold', 'Max_Streak_Pos', 'Max_Streak_Neg',
+                        'Pattern', 'Pattern_Name', 'Category', 'Chance', 'Prob', 'Stats'
+                    ]
+                    try:
+                        pd.DataFrame(all_results, columns=columns_master).to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
+                    except Exception as e:
+                        print(f"   ⚠️ Could not save Master Stats CSV: {e}")
+                
+                # Save Streak Profile
+                if all_streak_results:
+                    columns_streak = [
+                        'Symbol', 'Streak_Type', 'Day_Count_n', 'Reached_Count', 'Continued_to_n_plus_1', 'Next_Day_Prob_Percent'
+                    ]
+                    try:
+                        pd.DataFrame(all_streak_results, columns=columns_streak).to_csv("data/Streak_Profile.csv", index=False, encoding='utf-8-sig')
+                    except Exception as e:
+                        print(f"   ⚠️ Could not save Streak Profile CSV: {e}")
     
     print(f"\n\n{'=' * 60}")
     print(f"✅ Processed: {success_count}/{total_assets} assets")
     
-    # Create DataFrame
-    columns = [
+    # Create DataFrames
+    columns_master = [
         'Symbol', 'Threshold', 'Max_Streak_Pos', 'Max_Streak_Neg',
         'Pattern', 'Pattern_Name', 'Category', 'Chance', 'Prob', 'Stats'
     ]
+    columns_streak = [
+        'Symbol', 'Streak_Type', 'Day_Count_n', 'Reached_Count', 'Continued_to_n_plus_1', 'Next_Day_Prob_Percent'
+    ]
     
-    result_df = pd.DataFrame(all_results, columns=columns)
+    df_master = pd.DataFrame(all_results, columns=columns_master)
+    df_streak = pd.DataFrame(all_streak_results, columns=columns_streak)
     
-    return result_df
+    # Final Save
+    df_streak.to_csv("data/Streak_Profile.csv", index=False, encoding='utf-8-sig')
+    
+    return df_master
 
 
 def print_formatted_table(df: pd.DataFrame, max_rows: int = 30):

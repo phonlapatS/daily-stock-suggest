@@ -8,7 +8,7 @@ Displays the Master_Pattern_Stats.csv in a nicely formatted table.
 import pandas as pd
 import sys
 
-def print_formatted_table(df: pd.DataFrame, max_rows: int = 50):
+def print_formatted_table(df: pd.DataFrame, max_rows: int = 50, symbol_filter: str = None):
     """
     Print DataFrame as a nicely formatted table.
     """
@@ -23,6 +23,11 @@ def print_formatted_table(df: pd.DataFrame, max_rows: int = 50):
     print(header)
     print("-" * 120)
     
+    # Filter by symbol if provided
+    if symbol_filter:
+        df = df[df['Symbol'] == symbol_filter.upper()]
+        print(f"🔍 Filtering for: {symbol_filter}")
+
     # Rows
     for idx, row in df.head(max_rows).iterrows():
         symbol = str(row['Symbol'])[:10]
@@ -49,13 +54,19 @@ def print_formatted_table(df: pd.DataFrame, max_rows: int = 50):
 
 
 def main():
-    # Support optional CSV path argument
-    if len(sys.argv) > 1 and sys.argv[1].endswith('.csv'):
-        csv_path = sys.argv[1]
-        args_start_idx = 2
-    else:
-        csv_path = "data/Master_Pattern_Stats.csv"
-        args_start_idx = 1
+    csv_path = "data/Master_Pattern_Stats.csv"
+    max_rows = 50
+    symbol_filter = None
+    
+    # Simple argument parsing
+    args = sys.argv[1:]
+    for arg in args:
+        if arg.endswith('.csv'):
+            csv_path = arg
+        elif arg.isdigit():
+            max_rows = int(arg)
+        else:
+            symbol_filter = arg.upper()
     
     try:
         df = pd.read_csv(csv_path)
@@ -73,7 +84,7 @@ def main():
         except:
             pass
     
-    print_formatted_table(df, max_rows=max_rows)
+    print_formatted_table(df, max_rows=max_rows, symbol_filter=symbol_filter)
 
 
 if __name__ == "__main__":
