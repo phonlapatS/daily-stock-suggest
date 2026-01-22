@@ -17,7 +17,8 @@ def print_formatted_table(df: pd.DataFrame, max_rows: int = 50):
     print("=" * 120)
     
     # Header
-    header = f"{'Symbol':<10} {'Threshold':>10} {'MaxUp':>6} {'MaxDown':>8} {'Pattern':^8} {'Pattern_Name':<20} {'Category':<10} {'Prob':>6} {'Stats':>18}"
+    # Header
+    header = f"{'Symbol':<10} {'Threshold':>10} {'MaxUp':>6} {'MaxDown':>8} {'Pattern':^8} {'Pattern_Name':<20} {'Category':<10} {'Chance':<8} {'Prob':>6} {'Stats':>18}"
     print("-" * 120)
     print(header)
     print("-" * 120)
@@ -33,10 +34,11 @@ def print_formatted_table(df: pd.DataFrame, max_rows: int = 50):
         pattern = str(row['Pattern'])
         pattern_name = str(row['Pattern_Name'])[:20]
         category = str(row['Category'])[:10]
+        chance = str(row.get('Chance', '-'))[:8]
         prob = str(row['Prob'])
         stats = str(row['Stats'])
         
-        print(f"{symbol:<10} {threshold:>10} {max_up:>6} {max_down:>8} {pattern:^8} {pattern_name:<20} {category:<10} {prob:>6} {stats:>18}")
+        print(f"{symbol:<10} {threshold:>10} {max_up:>6} {max_down:>8} {pattern:^8} {pattern_name:<20} {category:<10} {chance:<8} {prob:>6} {stats:>18}")
     
     print("-" * 100)
     
@@ -47,7 +49,13 @@ def print_formatted_table(df: pd.DataFrame, max_rows: int = 50):
 
 
 def main():
-    csv_path = "data/Master_Pattern_Stats.csv"
+    # Support optional CSV path argument
+    if len(sys.argv) > 1 and sys.argv[1].endswith('.csv'):
+        csv_path = sys.argv[1]
+        args_start_idx = 2
+    else:
+        csv_path = "data/Master_Pattern_Stats.csv"
+        args_start_idx = 1
     
     try:
         df = pd.read_csv(csv_path)

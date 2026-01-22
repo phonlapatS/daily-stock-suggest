@@ -131,9 +131,9 @@ def calculate_stock_dna(df: pd.DataFrame) -> Dict:
     close = df['close']
     pct_change = close.pct_change()
     
-    # Threshold: 20-day rolling STD * 2
+    # Threshold: 20-day rolling STD * 1.25 (Standard V2 Logic)
     recent_std = pct_change.iloc[-VOLATILITY_WINDOW:].std()
-    threshold = recent_std * 2 * 100  # Convert to percentage
+    threshold = recent_std * 1.25 * 100  # Convert to percentage
     threshold_str = f"±{threshold:.1f}%"
     
     # Max Streak Calculations (Threshold Based)
@@ -181,34 +181,38 @@ def scan_pattern(df: pd.DataFrame, pattern: str, dna: Dict) -> Dict:
     wins = 0
     total = 0
     
+
+    
+    returns = []
     # Scan through history
     for i in range(pattern_len, len(pct_change) - 1):
         window = pct_change.iloc[i - pattern_len:i]
         
-        # Convert to pattern string
+        # Convert to pattern string efficiently
+        # (This inner loop is the bottleneck, but fine for now)
         window_pattern = ''
         for ret in window:
-            if pd.isna(ret):
-                continue
-            if ret > threshold:
-                window_pattern += '+'
-            elif ret < -threshold:
-                window_pattern += '-'
+            if pd.isna(ret): break
+            if ret > threshold: window_pattern += '+'
+            elif ret < -threshold: window_pattern += '-'
         
-        # Check if pattern matches
+        if len(window_pattern) != pattern_len: continue # Skip if incomplete/break
+
         if window_pattern == pattern:
-            total += 1
             next_ret = pct_change.iloc[i]
-            if next_ret > 0:
-                wins += 1
-    
+            returns.append(next_ret)
+
+    total = len(returns)
+    wins = sum(1 for r in returns if r > 0)
     prob = (wins / total * 100) if total > 0 else 0
+    avg_return = (sum(returns) / total * 100) if total > 0 else 0.0
     
     return {
         'wins': wins,
         'total': total,
         'prob': f"{int(prob)}%",
-        'stats': f"{wins}/{total} ({dna['total_bars']})"
+        'stats': f"{wins}/{total} ({dna['total_bars']})",
+        'avg_return': avg_return
     }
 
 
@@ -290,6 +294,15 @@ def process_all_assets() -> pd.DataFrame:
                 if stats['total'] == 0:
                     continue
                 
+                # Determine Chance
+                avg_ret = stats['avg_return']
+                if avg_ret > 0:
+                    chance = "🟢 UP"
+                elif avg_ret < 0:
+                    chance = "🔴 DOWN"
+                else:
+                    chance = "⚪ SIDE"
+                
                 # Build result row
                 row = {
                     'Symbol': display_name,
@@ -299,12 +312,25 @@ def process_all_assets() -> pd.DataFrame:
                     'Pattern': pattern,
                     'Pattern_Name': pattern_info['pattern_name'],
                     'Category': pattern_info['category'],
+                    'Chance': chance,
                     'Prob': stats['prob'],
                     'Stats': stats['stats']
                 }
                 all_results.append(row)
             
             time.sleep(0.3)  # Rate limit
+
+            # Incremental Save (Every 5 assets)
+            if success_count % 5 == 0 and all_results:
+                columns = [
+                    'Symbol', 'Threshold', 'Max_Streak_Pos', 'Max_Streak_Neg',
+                    'Pattern', 'Pattern_Name', 'Category', 'Chance', 'Prob', 'Stats'
+                ]
+                try:
+                    temp_df = pd.DataFrame(all_results, columns=columns)
+                    temp_df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
+                except Exception as e:
+                    print(f"   ⚠️ Could not save intermediate CSV: {e}")
     
     print(f"\n\n{'=' * 60}")
     print(f"✅ Processed: {success_count}/{total_assets} assets")
@@ -312,7 +338,7 @@ def process_all_assets() -> pd.DataFrame:
     # Create DataFrame
     columns = [
         'Symbol', 'Threshold', 'Max_Streak_Pos', 'Max_Streak_Neg',
-        'Pattern', 'Pattern_Name', 'Category', 'Prob', 'Stats'
+        'Pattern', 'Pattern_Name', 'Category', 'Chance', 'Prob', 'Stats'
     ]
     
     result_df = pd.DataFrame(all_results, columns=columns)
