@@ -278,15 +278,19 @@ def scan_pattern(df: pd.DataFrame, pattern: str, dna: Dict) -> Dict:
     up_count = sum(1 for r in returns if r > 0)
     down_count = sum(1 for r in returns if r < 0)
     
-    # Determine which outcome is more frequent
+    # Total decisive days (exclude FLAT)
+    decisive_total = up_count + down_count
+    
+    # Determine which outcome is more frequent (excluding FLAT)
     if up_count >= down_count:
         dominant_direction = 'UP'
         dominant_count = up_count
-        prob = (up_count / total * 100) if total > 0 else 0
     else:
         dominant_direction = 'DOWN'
         dominant_count = down_count
-        prob = (down_count / total * 100) if total > 0 else 0
+    
+    # Probability based on decisive days only (UP vs DOWN, not FLAT)
+    prob = (dominant_count / decisive_total * 100) if decisive_total > 0 else 0
         
     # Calculate Average Return (Next Day)
     avg_return = pd.Series(returns).mean() * 100 if returns else 0.0
@@ -298,7 +302,7 @@ def scan_pattern(df: pd.DataFrame, pattern: str, dna: Dict) -> Dict:
         'dominant_direction': dominant_direction,
         'dominant_count': dominant_count,
         'prob': f"{int(prob)}%",
-        'stats': f"{dominant_count}/{total} ({dna['total_bars']})",
+        'stats': f"{dominant_count}/{decisive_total} ({dna['total_bars']})",
         'avg_return': avg_return
     }
 

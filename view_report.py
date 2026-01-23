@@ -41,12 +41,12 @@ def view_report(symbol=None):
         # Wait, batch_processor.py saves keys as is. scan_pattern returned 'avg_return'.
         # Let's check keys.
         
-        print(f"{'Pattern':<25} {'Category':<10} {'Chance':<10} {'Prob':<6} {'Stats':<15} {'Avg_Ret':>8}")
-        print("-" * 80)
+        print(f"{'Pattern':<10} {'Category':<10} {'Chance':<10} {'Prob':<6} {'Stats':<15} {'Avg_Ret':>8}")
+        print("-" * 70)
         for _, row in stats.iterrows():
             avg_ret = row.get('avg_return', 0.0)
             avg_ret_str = f"{avg_ret:+.2f}%"
-            print(f"{str(row['Pattern_Name']):<25} {str(row['Category']):<10} {str(row['Chance']):<10} {str(row['Prob']):<6} {str(row['Stats']):<15} {avg_ret_str:>8}")
+            print(f"{str(row['Pattern']):<10} {str(row['Category']):<10} {str(row['Chance']):<10} {str(row['Prob']):<6} {str(row['Stats']):<15} {avg_ret_str:>8}")
 
     # ---------------------------------------------------------
     # PART 2: Streak Profile
@@ -55,7 +55,7 @@ def view_report(symbol=None):
     if streaks.empty:
         print("   (No Streak Data found)")
     else:
-        print(f"{'Type':<6} {'Day':<4} {'Count':>8} {'Cont.':>8} {'Prediction':>18} {'Avg_Ints':>10}")
+        print(f"{'Type':<6} {'Day':<4} {'Count':>8} {'Cont.':>8} {'Prob':>18} {'Avg_Ints':>10}")
         print("-" * 80)
         for _, row in streaks.iterrows():
             if 'Next_Day_Prob_Percent' in row:
