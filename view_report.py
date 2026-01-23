@@ -73,10 +73,18 @@ def view_report(symbol=None):
             avg_int = row.get('Avg_Intensity', 0.0)
             avg_int_str = f"{avg_int:+.2f}%"
             
-            # Create stats string: "continued/reached"
+            # Create stats string showing dominant side (like Master Stats)
             reached = row['Reached_Count']
             continued = row['Continued_to_n_plus_1']
-            stats_str = f"{continued}/{reached}"
+            reversed_count = reached - continued
+            
+            # Show the dominant count (matching Prob logic)
+            if survival_prob >= 50:
+                # CONT is dominant
+                stats_str = f"{continued}/{reached}"
+            else:
+                # REV is dominant
+                stats_str = f"{reversed_count}/{reached}"
 
             print(f"{row['Streak_Type']:<6} {row['Day_Count_n']:<4} {stats_str:>12} {pred_str:>18} {avg_int_str:>10}")
 
