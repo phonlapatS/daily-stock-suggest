@@ -32,21 +32,28 @@ def view_report(symbol=None):
     # ---------------------------------------------------------
     # PART 1: Master Pattern Stats
     # ---------------------------------------------------------
-    print_section_header("PART 1: MASTER PATTERN STATS (Tomorrow's Forecast)")
+    # ---------------------------------------------------------
+    # PART 1: Master Pattern Stats
+    # ---------------------------------------------------------
+    
+    # Prepare Threshold Info
+    threshold_info = ""
+    if not stats.empty and 'Threshold' in stats.columns:
+        threshold_val = stats.iloc[0]['Threshold']
+        threshold_info = f" [Threshold: {threshold_val}]"
+        
+    print_section_header(f"PART 1: MASTER PATTERN STATS (Tomorrow's Forecast){threshold_info}")
+    
     if stats.empty:
         print("   (No Pattern Data found)")
     else:
-        # Columns to display
-        # Check columns (CSV might have 'avg_return' or 'Avg_Return' depending on save format. batch_processor key was 'avg_return' but CSV usually capitalizes keys? 
-        # Wait, batch_processor.py saves keys as is. scan_pattern returned 'avg_return'.
-        # Let's check keys.
-        
-        print(f"{'Pattern':<10} {'Category':<10} {'Chance':<10} {'Prob':<6} {'Stats':<15} {'Avg_Ret':>8}")
-        print("-" * 70)
+        print(f"{'Threshold':<12} {'Pattern':<10} {'Category':<10} {'Chance':<10} {'Prob':<6} {'Stats':<15} {'Avg_Ret':>8}")
+        print("-" * 85)
         for _, row in stats.iterrows():
             avg_ret = row.get('avg_return', 0.0)
             avg_ret_str = f"{avg_ret:+.2f}%"
-            print(f"{str(row['Pattern']):<10} {str(row['Category']):<10} {str(row['Chance']):<10} {str(row['Prob']):<6} {str(row['Stats']):<15} {avg_ret_str:>8}")
+            threshold_val = str(row.get('Threshold', 'N/A'))
+            print(f"{threshold_val:<12} {str(row['Pattern']):<10} {str(row['Category']):<10} {str(row['Chance']):<10} {str(row['Prob']):<6} {str(row['Stats']):<15} {avg_ret_str:>8}")
 
     # ---------------------------------------------------------
     # PART 2: Streak Profile

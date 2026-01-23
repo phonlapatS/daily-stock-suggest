@@ -1,102 +1,103 @@
-# Stock Prediction System (v2.0)
+# Stock Prediction System (v3.1)
 
 📊 **Fractal N+1 Prediction System - Pure Data-Driven**
 
-> **🆕 Version 2.0 Updates (2026-01-21):** Major Improvements!
-> - ✅ **Optimal Threshold (1.25 SD):** จับการเคลื่อนไหวที่มีนัยสำคัญ ไม่จับการขยับปกติ (ลด overfitting)
-> - ✅ **Deep History (5000 bars):** ~20 ปีของข้อมูล (จาก 12 ปี) → Stats เพิ่มขึ้น 5-10 เท่า!
-> - ✅ **Full Coverage:** ครอบคลุมไทย (SET100+), สหรัฐฯ (NASDAQ), จีน (ADRs), และทองคำ
-> - ✅ **Stats Quality Filter (≥30):** แสดงเฉพาะ Pattern ที่มีข้อมูลเยอะพอ → น่าเชื่อถือทางสถิติ
-> - ✅ **Execution Timer:** แสดงเวลาทำงาน (~9 นาที สำหรับ 233 symbols)
+> **🆕 Version 3.1 Updates (2026-01-21):** Refined Logic & Enhanced Reporting!
+> - ✅ **Strict Logic:** "FLAT" days (within threshold) now **break the streak**. Logic is tighter and more precise.
+> - ✅ **Hybrid Volatility Threshold:** Uses `Max(20-day SD, 50% of 1-Year SD)` to handle both volatile and flat markets.
+> - ✅ **Corrected Probability:** Prob = `Count / (UP + DOWN)`. FLAT days are excluded from the denominator to ensure `Prob >= 50%`.
+> - ✅ **Streak Profile:** New "Momentum" table showing the survival rate of consecutive UP/DOWN streaks.
+> - ✅ **Intraday Metals:** Support for Gold (XAUUSD) & Silver (XAGUSD) analysis.
 
-## 🌎 Supported Assets (Total: 233)
+## 🌎 Supported Assets (Total: 255+)
 
 | Group | Description | Count | Details |
 |-------|-------------|-------|---------|
-| **🇹🇭 THAI** | SET100+ | 118 | หุ้นใหญ่และกลางของไทย (ADVANC, PTT, KBANK) |
-| **🇺🇸 US** | NASDAQ 100 | 98 | Tech Giants (NVDA, TSLA, AAPL, MSFT) |
-| **🇨🇳 CHINA** | Tech & Economy | 13 | US ADRs (BABA, JD, PDD, YUMC) *No ETFs* |
-| **⚡ METALS** | Gold & Silver | 4 | XAUUSD, XAGUSD (15m & 30m Timeframe) |
-
-*(Global Indices: SET, SPX, HSI supported but currently disabled)*
+| **🇹🇭 THAI** | SET100+ | 118 | Large & Mid-cap Thai Stocks (ADVANC, PTT, KBANK) |
+| **🇺🇸 US** | NASDAQ 100 | 98 | US Tech Giants (NVDA, TSLA, AAPL, MSFT) |
+| **🇨🇳 CHINA** | Tech & Economy | 13 | US ADRs (BABA, JD, PDD) |
+| **⚡ METALS** | Gold & Silver | 4 | XAUUSD, XAGUSD (15m, 30m, 1h) |
 
 ---
 
-## 💡 Concept
+## 💡 Concept: Hybrid Logic
 
-**"History Repeat Itself"**
+**1. Dynamic Thresholding (Adaptive Noise Filter)**
+Instead of a fixed percentage, we use a **Hybrid Volatility Threshold**:
+*   **Short-Term:** 1.25 * SD (Standard Deviation) of the last **20 days**.
+*   **Long-Term Floor:** 50% of the 1-Year SD.
+*   **Logic:** `Threshold = Max(Short-Term, Long-Term Floor)`
+*   *Why?* prevents the threshold from becoming too small in extremely calm markets, reducing false signals (overfitting).
 
-ถ้าราคาหุ้นวันนี้ **เคลื่อนไหวผิดปกติ** (เกิน Threshold 1.25 SD) → เราจะค้นหาในอดีต 20 ปีว่า **"เคยเกิดเหตุการณ์แบบนี้กี่ครั้ง"** แล้วดูว่า **"วันถัดไปจบยังไง?"**
-
-### ทำไมต้อง 1.25 SD?
-
-| SD | จับอะไร | Stats | ปัญหา |
-|----|--------|-------|-------|
-| 2.0 | เฉพาะการเคลื่อนไหวรุนแรงมาก | 3-15 ครั้ง | น้อยเกินไป ไม่น่าเชื่อถือ |
-| **1.25** ⭐ | **การเคลื่อนไหวที่ชัดเจน** | **30-120 ครั้ง** | **สมดุลที่สุด!** |
-| 1.0 | รวมการขยับปกติด้วย | 20-100 ครั้ง | จับ noise มากเกินไป (overfitting) |
-
-**Output:**
-- **Stats:** จำนวนครั้งที่เคยเกิด (Wins/Matches) และสถิติรวม (Total Bars)
-  - ตัวอย่าง: `96/168 (5000)` = ชนะ 96 จาก 168 ครั้ง (จากข้อมูล 5000 วัน)
-- **Prob:** ความน่าจะเป็นจากสถิติ (เช่น 57%)
-- **Exp. Move:** ราคาคาดหวังเฉลี่ย
+**2. Strict Pattern Recognition**
+*   **UP (+)**: Price Change > +Threshold
+*   **DOWN (-)**: Price Change < -Threshold
+*   **FLAT**: Price Change within ±Threshold
+*   *Rule:* A **FLAT** day immediately **breaks** a streak. We only count pure momentum.
 
 ---
 
 ## 🚀 Usage
 
+### 1. View Report (Single Asset)
+Detailed analysis including Master Pattern Stats and Streak Profile.
 ```bash
-python main.py
+python view_report.py [SYMBOL]
+# Example: python view_report.py ADVANC
 ```
 
-**Output Example:**
+### 2. Batch Processing (All Assets)
+Process all 255+ assets and generate `Master_Pattern_Stats.csv` and `Streak_Profile.csv`.
+```bash
+python batch_processor.py
+```
 
-```text
-===============================================================================================
-📊 FRACTAL PREDICTION REPORT (High Confidence Only)
-===============================================================================================
-
-🇨🇳 CHINA MARKET (TECH & ECONOMY)
--------------------------------------------------------------------------------------------------------------------
-Symbol          Price       Chg%    Threshold   Pattern    Chance         Prob.                Stats    Exp. Move
--------------------------------------------------------------------------------------------------------------------
-BIDU           150.02     +0.33%       ±3.94%      +-      🟢 UP             57%        96/168 (5000 )       +0.61%
-JD              28.38     -1.80%       ±1.75%      +-      🟢 UP             56%        65/116 (2933 )       +0.27%
--------------------------------------------------------------------------------------------------------------------
-
-⏱️ Total execution time: 8m 46s
+### 3. Check Gold/Silver Intraday
+```bash
+python scripts/check_gold_silver.py
 ```
 
 ---
 
-## 🎯 Key Features
+## 📊 Output Example (view_report.py)
 
-### 1. Stats Quality Filter (≥30)
-**แสดงเฉพาะ Pattern ที่น่าเชื่อถือ**
-- Stats < 10: Margin of Error ±44% (❌ ไม่แสดง)
-- Stats ≥ 30: Margin of Error ≤18% (✅ แสดง)
+```text
+===============================================================
+=================
+📄 PART 1: MASTER PATTERN STATS (Tomorrow's Forecast) [Threshold: ±1.40%]
+===============================================================
+=================
+Pattern    Category   Chance     Prob   Stats           Avg_Ret
+--------------------------------------------------------------------------------
++-+        Reversal   🔴 DOWN    57%    4/7 (5000)      -0.5%
+...
 
-### 2. Context-Aware Filter
-**กรอง Pattern ที่ขัดแย้งกับความเป็นจริงออก**
-- ถ้าวันนี้หุ้น **ขึ้น** (+) → โชว์เฉพาะ Pattern ที่จบด้วย `+`
-- ถ้าวันนี้หุ้น **ลง** (-) → โชว์เฉพาะ Pattern ที่จบด้วย `-`
-
-### 3. CSV Export
-บันทึกผลลัพธ์ทั้งหมดลงไฟล์ `data/pattern_results.csv` อัตโนมัติ เพื่อนำไปวิเคราะห์ต่อได้ง่าย
+===============================================================
+=================
+📄 PART 2: STREAK PROFILE (Momentum)
+===============================================================
+=================
+Type   Day         Stats               Prob   Avg_Ints
+---------------------------------------------------------------
+-----------------
+UP     1         465/582     🔴 REV. (79.9%)     +3.21%        
+UP     2          90/117     🔴 REV. (76.9%)     +3.33%        
+```
 
 ---
 
 ## 📈 Changelog
 
-### v2.0 (2026-01-21)
-- **New Assets:** เพิ่มหุ้นจีน (China Tech & Economy ADRs)
-- **Dynamic Reporting:** ตารางแยกตามกลุ่มอัตโนมัติ (Header generated from config)
-- **Enhanced Stats:** แสดง Total Bars ในช่อง Stats (e.g. `24/30 (5000)`)
-- **Optimization:** ปรับ SD Threshold เป็น 1.25 และเพิ่ม History เป็น 5000 Bars
+### v3.1 (2026-01-21)
+- **Strict Logic:** FLAT days break streaks.
+- **Hybrid Threshold:** `Max(20d SD, 0.5 * 1y SD)`.
+- **Prob Fix:** Exclude FLAT from Prob denominator.
+- **UI:** Merged "Continued/Reached" columns in Streak Profile.
 
-### v1.1 (2026-01-17)
-- Multi-pattern support & Context-aware filter
+### v2.0 (2026-01-21)
+- **New Assets:** China Tech & Economy ADRs.
+- **Dynamic Reporting:** Grouped tables.
+- **Optimization:** SD 1.25 & 5000 Bars history.
 
 ---
 
