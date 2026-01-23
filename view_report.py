@@ -51,11 +51,11 @@ def view_report(symbol=None):
     # ---------------------------------------------------------
     # PART 2: Streak Profile
     # ---------------------------------------------------------
-    print_section_header("PART 2: STREAK PROFILE (Momentum Health)")
+    print_section_header("PART 2: STREAK PROFILE (Momentum)")
     if streaks.empty:
         print("   (No Streak Data found)")
     else:
-        print(f"{'Type':<6} {'Day':<4} {'Count':>8} {'Cont.':>8} {'Prob':>18} {'Avg_Ints':>10}")
+        print(f"{'Type':<6} {'Day':<4} {'Stats':>12} {'Prob':>18} {'Avg_Ints':>10}")
         print("-" * 80)
         for _, row in streaks.iterrows():
             if 'Next_Day_Prob_Percent' in row:
@@ -72,8 +72,13 @@ def view_report(symbol=None):
             
             avg_int = row.get('Avg_Intensity', 0.0)
             avg_int_str = f"{avg_int:+.2f}%"
+            
+            # Create stats string: "continued/reached"
+            reached = row['Reached_Count']
+            continued = row['Continued_to_n_plus_1']
+            stats_str = f"{continued}/{reached}"
 
-            print(f"{row['Streak_Type']:<6} {row['Day_Count_n']:<4} {row['Reached_Count']:>8} {row['Continued_to_n_plus_1']:>8} {pred_str:>18} {avg_int_str:>10}")
+            print(f"{row['Streak_Type']:<6} {row['Day_Count_n']:<4} {stats_str:>12} {pred_str:>18} {avg_int_str:>10}")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
