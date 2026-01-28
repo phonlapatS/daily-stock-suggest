@@ -94,33 +94,7 @@ def generate_report(results):
         for r in results:
             if r['group'] != group_key: continue
             
-            # --- CONTEXT AWARE FILTER ---
-            # To avoid confusion (e.g., showing '-' patterns when today is clearly '+')
-            # we filter patterns to match the current day's price action context.
-            
-            current_chg = r['change_pct']
-            threshold   = r['threshold']
-            pattern     = r.get('pattern_display', '')
-            
-            # 1. If today is clearly UP (+), only show patterns ending in '+'
-            if current_chg > threshold:
-                if not pattern.endswith('+'):
-                    continue
-            
-            # 2. If today is clearly DOWN (-), only show patterns ending in '-'
-            elif current_chg < -threshold:
-                if not pattern.endswith('-'):
-                    continue
-            
-            # 3. If today is Neutral (.), showing patterns is tricky.
-            # Usually fractal system yields NO signal for neutral days.
-            # But if a pattern exactly matches 'quiet', we might show it (rare).
-            else:
-                 # If implied current pattern is '.', but result is '+', ignore.
-                 # Actually, quiet days usually don't trigger the scanner in processor.py 
-                 # because we look for "Breakout".
-                 pass
-
+            # Calculate display probability based on avg_return direction
             avg_ret = r['avg_return']
             if avg_ret > 0: prob = r['bull_prob']
             elif avg_ret < 0: prob = r['bear_prob']
