@@ -10,6 +10,7 @@ Implements:
 import pandas as pd
 import numpy as np
 import config
+from core.utils import calculate_hybrid_threshold, is_statistically_significant
 
 def analyze_asset(df):
     """
@@ -53,7 +54,7 @@ def analyze_asset(df):
         
         # Scan ALL history for patterns (no limit for better accuracy)
         scan_start = 5  # Start after having enough data
-        threshold_series = effective_std * 1.25  # ปรับเป็น 1.25 SD เพื่อลด overfitting
+        threshold_series = calculate_hybrid_threshold(pct_change)  # Use shared Hybrid Logic
         
         for i in range(scan_start, history_len):
             # Get 4-day window ending at day i
@@ -62,18 +63,24 @@ def analyze_asset(df):
             window_returns = pct_change.iloc[i-3:i+1]  # 4 days
             window_thresh = threshold_series.iloc[i-3:i+1]
             
-            # Convert to pattern string (skip quiet days)
+            # Convert to pattern string (STRICT: flat day breaks the pattern)
             pattern = ""
+            is_valid = True
             for ret, thresh in zip(window_returns, window_thresh):
                 if pd.isna(ret) or pd.isna(thresh):
-                    continue
+                    is_valid = False
+                    break
                 if ret > thresh:
                     pattern += '+'
                 elif ret < -thresh:
                     pattern += '-'
+                else:
+                    # Flat day = break pattern (STRICT LOGIC)
+                    is_valid = False
+                    break
             
-            # Only store non-empty patterns
-            if pattern and pattern != '':
+            # Only store complete, valid patterns
+            if is_valid and pattern and len(pattern) == 4:
                 if pattern not in pattern_occurrences:
                     pattern_occurrences[pattern] = []
                 pattern_occurrences[pattern].append(i)
@@ -98,10 +105,8 @@ def analyze_asset(df):
                     ret = (price_next_day - price_at_pattern_end) / price_at_pattern_end
                     future_returns.append(ret)
             
-            # Flexible Min Matches: อย่างน้อย 0.1% ของข้อมูล หรือ 3 ครั้ง
-            min_matches = max(3, int(history_len * 0.001))  # 5000 bars × 0.001 = 5
-                
-            if not future_returns or len(future_returns) < min_matches:
+            # Use shared validation function
+            if not is_statistically_significant(len(future_returns)):
                 continue
             
             # Calculate pattern-specific statistics

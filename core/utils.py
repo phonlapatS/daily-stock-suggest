@@ -1,169 +1,90 @@
 """
-Utility functions for Stock Statistics Extraction System
+core/utils.py - Shared Logic Functions (V3.2 Standard)
+=======================================================
+Central repository for calculation logic to ensure consistency
+across processor.py and batch_processor.py.
 """
 
-import json
-import os
-from datetime import datetime
 import pandas as pd
 import numpy as np
 
-
-def calculate_percent_change(price_old, price_new):
+# ============================================================
+# VOLATILITY THRESHOLD (Hybrid Logic)
+# ============================================================
+def calculate_hybrid_threshold(pct_change: pd.Series, 
+                                short_window: int = 20,
+                                long_window: int = 252,
+                                multiplier: float = 1.25) -> pd.Series:
     """
-    คำนวณ % การเปลี่ยนแปลงของราคา
+    Calculate Hybrid Volatility Threshold.
+    
+    Logic:
+    - Short-term: Rolling SD of last `short_window` days × multiplier
+    - Long-term Floor: 50% of Rolling SD of last `long_window` days × multiplier
+    - Effective Threshold = Max(Short-term, Long-term Floor)
     
     Args:
-        price_old: ราคาเก่า
-        price_new: ราคาใหม่
+        pct_change: Series of percentage changes (decimal form)
+        short_window: Days for short-term volatility (default 20)
+        long_window: Days for long-term volatility (default 252, ~1 year)
+        multiplier: SD multiplier (default 1.25)
     
     Returns:
-        float: % change
+        Series of threshold values (decimal form, NOT percentage)
     """
-    if price_old == 0:
+    short_term_std = pct_change.rolling(window=short_window).std()
+    long_term_std = pct_change.rolling(window=long_window).std()
+    
+    # Long-term floor = 50% of 1-year SD
+    long_term_floor = long_term_std * 0.50
+    
+    # Effective threshold = Max(Short, Floor)
+    effective_std = np.maximum(short_term_std, long_term_floor.fillna(0))
+    effective_std = effective_std.fillna(short_term_std)
+    
+    # Apply multiplier
+    threshold = effective_std * multiplier
+    
+    return threshold
+
+
+def get_current_threshold(pct_change: pd.Series, 
+                           short_window: int = 20,
+                           long_window: int = 252,
+                           multiplier: float = 1.25) -> float:
+    """
+    Get the current (latest) threshold value as a single float.
+    
+    Returns:
+        Threshold value (decimal form). Returns 0 if invalid.
+    """
+    threshold_series = calculate_hybrid_threshold(
+        pct_change, short_window, long_window, multiplier
+    )
+    
+    current = threshold_series.iloc[-1]
+    
+    if pd.isna(current) or current == 0:
         return 0.0
-    return ((price_new - price_old) / price_old) * 100
+    
+    return float(current)
 
 
-def add_percent_change_column(df):
+# ============================================================
+# SAMPLE SIZE VALIDATION
+# ============================================================
+MIN_SAMPLE_THRESHOLD = 5
+
+def is_statistically_significant(sample_count: int, 
+                                  min_threshold: int = MIN_SAMPLE_THRESHOLD) -> bool:
     """
-    เพิ่ม column % change ใน DataFrame
+    Check if sample size is sufficient for statistical analysis.
     
     Args:
-        df: DataFrame with 'close' column
+        sample_count: Number of occurrences
+        min_threshold: Minimum required samples (default 5)
     
     Returns:
-        DataFrame: with added 'pct_change' column
+        True if sample size >= min_threshold
     """
-    df = df.copy()
-    df['pct_change'] = df['close'].pct_change() * 100
-    return df
-
-
-def classify_direction(pct_change, sideways_threshold=0.5):
-    """
-    จัดประเภททิศทางของการเคลื่อนไหว
-    
-    Args:
-        pct_change: % การเปลี่ยนแปลง
-        sideways_threshold: threshold สำหรับการถือว่า sideways
-    
-    Returns:
-        str: 'up', 'down', หรือ 'sideways'
-    """
-    if pct_change > sideways_threshold:
-        return 'up'
-    elif pct_change < -sideways_threshold:
-        return 'down'
-    else:
-        return 'sideways'
-
-
-def save_to_json(data, filepath):
-    """
-    บันทึกข้อมูลเป็น JSON file
-    
-    Args:
-        data: dict ที่จะบันทึก
-        filepath: path ของไฟล์
-    """
-    # สร้าง directory ถ้ายังไม่มี
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    
-    print(f"✅ Saved to {filepath}")
-
-
-def load_from_json(filepath):
-    """
-    โหลดข้อมูลจาก JSON file
-    
-    Args:
-        filepath: path ของไฟล์
-    
-    Returns:
-        dict: ข้อมูลที่โหลดมา
-    """
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def format_stats_report(stats):
-    """
-    สร้าง text report สวยๆ จาก statistics
-    
-    Args:
-        stats: dict ของ statistics
-    
-    Returns:
-        str: formatted report
-    """
-    report = []
-    report.append("=" * 60)
-    report.append("STOCK STATISTICS REPORT")
-    report.append("=" * 60)
-    report.append("")
-    
-    # Basic stats
-    report.append(f"Total significant days (±{stats.get('threshold', 1)}%): {stats.get('total_significant_days', 0)}")
-    report.append(f"  - Positive moves: {stats.get('positive_moves', 0)}")
-    report.append(f"  - Negative moves: {stats.get('negative_moves', 0)}")
-    report.append("")
-    
-    # Next day statistics
-    if 'next_day_stats' in stats:
-        report.append("NEXT DAY BEHAVIOR:")
-        report.append("-" * 60)
-        
-        if 'after_positive' in stats['next_day_stats']:
-            ap = stats['next_day_stats']['after_positive']
-            report.append(f"After positive days:")
-            report.append(f"  Up: {ap.get('up', 0)}, Down: {ap.get('down', 0)}, Sideways: {ap.get('sideways', 0)}")
-            report.append(f"  Average change: {ap.get('avg_change', 0):.2f}%")
-        
-        if 'after_negative' in stats['next_day_stats']:
-            an = stats['next_day_stats']['after_negative']
-            report.append(f"After negative days:")
-            report.append(f"  Up: {an.get('up', 0)}, Down: {an.get('down', 0)}, Sideways: {an.get('sideways', 0)}")
-            report.append(f"  Average change: {an.get('avg_change', 0):.2f}%")
-        report.append("")
-    
-    # Probabilities
-    if 'probabilities' in stats:
-        report.append("PROBABILITIES:")
-        report.append("-" * 60)
-        probs = stats['probabilities']
-        for key, value in probs.items():
-            report.append(f"  {key}: {value:.1f}%")
-        report.append("")
-    
-    # Risk metrics
-    if 'risk' in stats:
-        report.append("RISK METRICS:")
-        report.append("-" * 60)
-        risk = stats['risk']
-        for key, value in risk.items():
-            report.append(f"  {key}: {value:.2f}%")
-        report.append("")
-    
-    report.append("=" * 60)
-    
-    return "\n".join(report)
-
-
-def ensure_directories():
-    """
-    สร้าง directories ที่จำเป็นถ้ายังไม่มี
-    """
-    from config import DATA_DIR, RESULTS_DIR, PLOTS_DIR
-    
-    for directory in [DATA_DIR, RESULTS_DIR, PLOTS_DIR]:
-        os.makedirs(directory, exist_ok=True)
-        # สร้าง .gitkeep
-        gitkeep_path = os.path.join(directory, '.gitkeep')
-        if not os.path.exists(gitkeep_path):
-            open(gitkeep_path, 'w').close()
-    
-    print("✅ Directories created/verified")
+    return sample_count >= min_threshold

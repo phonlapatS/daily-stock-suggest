@@ -62,8 +62,8 @@ def view_report(symbol=None):
     if streaks.empty:
         print("   (No Streak Data found)")
     else:
-        print(f"{'Type':<6} {'Day':<4} {'Stats':>12} {'Prob':>18} {'Avg_Ints':>10}")
-        print("-" * 80)
+        print(f"{'Type':<6} {'Day':<4} {'Stats':>12} {'Prob':>18}")
+        print("-" * 60)
         for _, row in streaks.iterrows():
             if 'Next_Day_Prob_Percent' in row:
                 prob = row['Next_Day_Prob_Percent']
@@ -76,9 +76,6 @@ def view_report(symbol=None):
                      pred_str = f"🔴 REV. ({reversal_prob:.1f}%)"
             else:
                 pred_str = "N/A"
-            
-            avg_int = row.get('Avg_Intensity', 0.0)
-            avg_int_str = f"{avg_int:+.2f}%"
             
             # Create stats string showing dominant side (like Master Stats)
             reached = row['Reached_Count']
@@ -93,7 +90,7 @@ def view_report(symbol=None):
                 # REV is dominant
                 stats_str = f"{reversed_count}/{reached}"
 
-            print(f"{row['Streak_Type']:<6} {row['Day_Count_n']:<4} {stats_str:>12} {pred_str:>18} {avg_int_str:>10}")
+            print(f"{row['Streak_Type']:<6} {row['Day_Count_n']:<4} {stats_str:>12} {pred_str:>18}")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

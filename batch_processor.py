@@ -18,6 +18,7 @@ import sys
 # Import from existing project
 from tvDatafeed import TvDatafeed
 import config
+from core.utils import calculate_hybrid_threshold, is_statistically_significant, MIN_SAMPLE_THRESHOLD
 
 # ============================================================
 # CONFIGURATION
@@ -131,9 +132,10 @@ def calculate_stock_dna(df: pd.DataFrame) -> Dict:
     close = df['close']
     pct_change = close.pct_change()
     
-    # Threshold: 20-day rolling STD * 1.25 (Standard V2 Logic)
-    recent_std = pct_change.iloc[-VOLATILITY_WINDOW:].std()
-    threshold = recent_std * 1.25 * 100  # Convert to percentage
+    # Threshold: Use shared Hybrid Logic from core/utils.py
+    threshold_series = calculate_hybrid_threshold(pct_change)
+    current_threshold = threshold_series.iloc[-1]
+    threshold = current_threshold * 100  # Convert to percentage
     threshold_str = f"±{threshold:.1f}%"
     
     # Max Streak Calculations (Threshold Based)
@@ -382,8 +384,12 @@ def process_all_assets() -> pd.DataFrame:
                 pattern = pattern_info['pattern']
                 stats = scan_pattern(df, pattern, dna)
                 
-                # Skip patterns with no occurrences
+                # Skip patterns with no occurrences OR low sample size
                 if stats['total'] == 0:
+                    continue
+                
+                # Low Sample Filter: Drop if < 5 occurrences
+                if not is_statistically_significant(stats['total']):
                     continue
                 
                 # Determine Chance (based on more frequent outcome)
