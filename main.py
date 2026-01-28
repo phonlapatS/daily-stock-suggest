@@ -68,7 +68,7 @@ def pass_filter(prob, stats, old_pass: bool):
 
 def generate_report(results):
     print("\n" + "="*95)
-    print("📊 FRACTAL PREDICTION REPORT")
+    print("📊 FRACTAL PREDICTION REPORT (High Confidence Only)")
     print("="*95)
     
     # Sort keys to ensure consistent order (Thai -> US -> Metals -> China -> Indices)
@@ -94,20 +94,31 @@ def generate_report(results):
         for r in results:
             if r['group'] != group_key: continue
             
-            # Calculate display probability based on avg_return direction
+            # Calculate probability based on avg_return direction
             avg_ret = r['avg_return']
             if avg_ret > 0: prob = r['bull_prob']
             elif avg_ret < 0: prob = r['bear_prob']
             else: prob = 50.0
             
-            # Add to filtered list (basic quality filter already applied in processor.py)
+            # Statistical Reliability Filter
+            # Apply probability-based sample size requirements
+            stats = r['matches']
+            old_pass = True  # processor.py ผ่าน min_matches มาแล้ว
+            
+            if not pass_filter(prob, stats, old_pass):
+                continue  # Skip patterns ที่ไม่ผ่านเกณฑ์ความน่าเชื่อถือ
+            
+            # Filter: Stats >= 30 (สำหรับความน่าเชื่อถือ)
+            if r['matches'] < 30:
+                continue
+            
             # Add prob to dict for sorting
             r['_sort_prob'] = prob
             filtered_data.append(r)
         
         if not filtered_data:
             print(f"\n{title}")
-            print("   (No signals found)")
+            print("   (No high-confidence signals found)")
             continue
             
         print(f"\n{title}")
