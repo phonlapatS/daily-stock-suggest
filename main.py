@@ -11,6 +11,7 @@ import pandas as pd
 from tvDatafeed import TvDatafeed
 import config
 import processor
+from core.scoring import calculate_confidence, calculate_risk_from_stats
 
 def fetch_and_analyze(tv, asset_info, history_bars, interval):
     symbol = asset_info['symbol']
@@ -142,13 +143,12 @@ def generate_report(results):
         
         
         # 4. Table Layout
-        # Columns (Left-to-Right): Symbol, Price, Chg%, Threshold, Pattern, Chance, Prob, Stats, Exp.Move
-        # Chance column: Left align (<11) so emojis line up vertically
-        header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^12} {'Chance':<11} {'Prob.':>8} {'Stats':>22} {'Exp. Move':>12}"
+        # Columns: Symbol, Price, Chg%, Threshold, Pattern, Chance, Prob, Conf%, Risk%, Stats, Exp.Move
+        header = f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^10} {'Chance':<11} {'Prob.':>6} {'Conf%':>6} {'Risk%':>6} {'Stats':>18} {'Exp.Move':>10}"
         
-        print("-" * 115)
+        print("-" * 130)
         print(header)
-        print("-" * 115)
+        print("-" * 130)
 
         for r in filtered_data:
             # Logic: Predict & Prob
@@ -187,16 +187,18 @@ def generate_report(results):
                 stats_str = f"{win_count}/{r['matches']} ({r.get('total_bars','?')})"
             
             # Strict Exp. Move Alignment
-            # Use fixed width inside formatting to ensuring signs line up
-            # e.g., "+0.76%"
             exp_str   = f"{avg_ret:+.2f}%"
             
-            # Print Row (Swapped: Chg% before Threshold)
-            # Increased Stats column width to 22
-            # Exp Move >12 ensures right alignment
-            print(f"{r['symbol']:<10} {price_str:>10} {chg_str:>10} {thresh_str:>12} {pattern:^12} {chance:<11} {prob_str:>8} {stats_str:>22} {exp_str:>12}")
+            # Calculate Confidence and Risk
+            conf_score = calculate_confidence(prob_val, r['matches'])
+            risk_score = calculate_risk_from_stats(r['bear_prob'], avg_ret)
+            conf_str = f"{int(conf_score)}%"
+            risk_str = f"{int(risk_score)}%"
+            
+            # Print Row with Conf% and Risk%
+            print(f"{r['symbol']:<10} {price_str:>10} {chg_str:>10} {thresh_str:>12} {pattern:^10} {chance:<11} {prob_str:>6} {conf_str:>6} {risk_str:>6} {stats_str:>18} {exp_str:>10}")
 
-        print("-" * 115)
+        print("-" * 130)
 
 
     # Export to DataFrame
