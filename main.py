@@ -12,6 +12,7 @@ from tvDatafeed import TvDatafeed
 import config
 import processor
 from core.scoring import calculate_confidence, calculate_risk_from_stats
+from core.performance import verify_forecast, log_forecast
 
 def fetch_and_analyze(tv, asset_info, history_bars, interval):
     symbol = asset_info['symbol']
@@ -279,6 +280,13 @@ def main():
     # Final Report
     if all_results:
         generate_report(all_results)
+        
+        # Performance Logging
+        print("\n" + "=" * 50)
+        print("📊 PERFORMANCE LOGGING")
+        print("=" * 50)
+        verify_forecast(tv)  # Verify yesterday's forecasts
+        log_forecast(all_results)  # Log today's forecasts
     else:
         print("\n❌ No matching patterns found in any asset.")
     
