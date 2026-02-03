@@ -48,8 +48,14 @@ patterns = {
     pd.to_datetime('2024-01-04'): '-', # New Data
 }
 
+# Mock the 'updates' dictionary that would come from the scanner logic
+updates_payload = {
+    '-': {'up': 1, 'down': 0, 'returns': [0.03]} # Day 4 outcome was UP (+3%), existing prediction was DOWN.
+}
+
 print(f"\nPerforming Update from {manager.last_update}...")
-manager.update_stats(df_data, patterns, symbol='TEST')
+# Call the internal commit method directly for testing
+manager._commit_updates(updates_payload, symbol='TEST')
 
 # Verify
 print("\nUpdated Stats:")

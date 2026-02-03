@@ -221,6 +221,33 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
         return None
 
 
+def save_trade_logs(trades, filename='trade_history.csv'):
+    """
+    Save list of trade dictionaries to CSV.
+    
+    Args:
+        trades (list): List of trade result dictionaries.
+        filename (str): Output filename.
+    """
+    if not trades:
+        return
+
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, filename)
+    
+    df_trades = pd.DataFrame(trades)
+    
+    # Ensure columns exist and order them
+    cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
+    # Filter only existing columns to avoid errors if some keys are missing
+    cols = [c for c in cols if c in df_trades.columns]
+    
+    df_trades = df_trades[cols]
+    df_trades.to_csv(log_path, index=False)
+    print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
+
+
 def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
     """
     Backtest ทุกหุ้นจาก config.py
@@ -281,28 +308,8 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
             
             time.sleep(0.3)  # Rate limit
             
-    # Save Trade Logs to CSV (Phase 1.6: Advanced Filtering)
-    if all_trades:
-        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
-        os.makedirs(log_dir, exist_ok=True)
-        log_path = os.path.join(log_dir, 'trade_history.csv')
-        
-        df_trades = pd.DataFrame(all_trades)
-        # Reorder columns for readability
-        cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
-        df_trades = df_trades[cols]
-        
-        df_trades.to_csv(log_path, index=False)
-        print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
-        log_path = os.path.join(log_dir, 'trade_history.csv')
-        
-        df_trades = pd.DataFrame(all_trades)
-        # Reorder columns for readability
-        cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
-        df_trades = df_trades[cols]
-        
-        df_trades.to_csv(log_path, index=False)
-        print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
+    # Save Trade Logs using helper
+    save_trade_logs(all_trades)
     
     # Summary
     if all_results:
@@ -404,18 +411,8 @@ def main():
                             trade['group'] = 'QUICK_TEST'
                             all_trades.append(trade)
             
-            # Save Trade Logs to CSV (Quick Mode)
-            if all_trades:
-                log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
-                os.makedirs(log_dir, exist_ok=True)
-                log_path = os.path.join(log_dir, 'trade_history.csv')
-                
-                df_trades = pd.DataFrame(all_trades)
-                cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
-                df_trades = df_trades[cols]
-                
-                df_trades.to_csv(log_path, index=False)
-                print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
+            # Save Trade Logs using helper
+            save_trade_logs(all_trades)
                 
             if results:
                 print("\n" + "=" * 60)
@@ -453,6 +450,7 @@ def main():
         print("  python scripts/backtest.py --quick           # 4 หุ้นหลัก")
         print("  python scripts/backtest.py --all             # ทุกหุ้น (ช้า)")
         print("  python scripts/backtest.py --all 100         # ทุกหุ้น, 100 bars")
+        print("  python scripts/backtest.py --full 5000       # สแกนจริงทั้งตลาด 5000 แท่ง")
     
     print("\n" + "=" * 70)
     print("✅ Backtest Complete")
