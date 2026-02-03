@@ -104,16 +104,56 @@ def analyze_asset(df):
             if not future_returns or len(future_returns) < min_matches:
                 continue
             
-            # Calculate pattern-specific statistics
+            # 4. Advanced Statistics Calculation
             bull_count = sum(1 for r in future_returns if r > 0)
             bear_count = sum(1 for r in future_returns if r < 0)
             total = len(future_returns)
             
             bull_prob = (bull_count / total) * 100
             bear_prob = (bear_count / total) * 100
+            
+            # Avg Return (Expected Value)
             avg_return = np.mean(future_returns) * 100
             
-            # Pattern ที่ผ่าน min_matches → เพิ่มเข้า results (กรองเพิ่มที่ main.py)
+            # === NEW: Mentor Metrics (Phase 1.5) ===
+            # Determine forecast direction based on last character of pattern
+            last_char = pattern_str[-1] if pattern_str else '+'
+            forecast_dir = 1 if last_char == '+' else -1
+            
+            # Separate wins and losses based on forecast direction
+            wins = [r for r in future_returns if (r > 0 and forecast_dir == 1) or (r < 0 and forecast_dir == -1)]
+            losses = [r for r in future_returns if (r <= 0 and forecast_dir == 1) or (r >= 0 and forecast_dir == -1)]
+            
+            # Avg Win % (average gain when prediction is correct)
+            avg_win_pct = abs(np.mean(wins)) * 100 if wins else 0
+            
+            # Avg Loss % (average loss when prediction is wrong)
+            avg_loss_pct = abs(np.mean(losses)) * 100 if losses else 0
+            
+            # RR Ratio (Risk/Reward) = Avg Win / Avg Loss
+            rr_ratio = avg_win_pct / avg_loss_pct if avg_loss_pct > 0 else float('inf')
+            # === END Mentor Metrics ===
+            
+            # Max Risk (CVaR: Avg of worst 10% returns)
+            negative_returns = [r for r in future_returns if r < 0]
+            if negative_returns:
+                # worst 10%
+                k = max(1, int(len(negative_returns) * 0.10))
+                worst_loss = sorted(negative_returns)[:k]
+                max_risk = np.mean(worst_loss) * 100
+            else:
+                max_risk = 0
+
+            # Confidence Score (0-100%)
+            # Logic: Base probability * Sample Size Weight
+            # Sample Size Weight: log2(matches) / log2(100) -> 10 matches=33%, 30=50%, 100=100%
+            prob_score = abs(bull_prob - 50) * 2  # Scale 50-100% to 0-100
+            
+            # Logarithmic sample weighting (diminishing returns after 100 matches)
+            sample_weight = min(1.0, np.log2(total) / np.log2(100))
+            
+            confidence = prob_score * sample_weight
+            
             results.append({
                 'status': 'MATCH_FOUND',
                 'symbol': 'Unknown',
@@ -122,13 +162,15 @@ def analyze_asset(df):
                 'threshold': current_std * 100,
                 'pattern_display': pattern_str,
                 'matches': total,
-                'total_bars': history_len,  # จำนวนวันทั้งหมดที่วิเคราะห์
+                'total_bars': history_len,
                 'bull_prob': bull_prob,
                 'bear_prob': bear_prob,
                 'avg_return': avg_return,
-                'vol_tag': 'NORMAL',
-                'z_score': 0,
-                'max_risk': 0
+                'avg_win_pct': round(avg_win_pct, 2),
+                'avg_loss_pct': round(avg_loss_pct, 2),
+                'rr_ratio': round(rr_ratio, 2),
+                'conf': confidence,
+                'max_risk': max_risk
             })
         
         return results

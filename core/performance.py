@@ -86,7 +86,7 @@ def log_forecast(results, group_info=None):
             'scan_date': today,
             'target_date': tomorrow,
             'symbol': r.get('symbol', 'Unknown'),
-            'exchange': r.get('group', 'Unknown'),
+            'exchange': r.get('exchange', 'SET'),  # Use actual exchange, not group name
             'pattern': r.get('pattern_display', ''),
             'forecast': forecast,
             'prob': round(prob, 1),

@@ -69,9 +69,9 @@ def pass_filter(prob, stats, old_pass: bool):
 
 
 def generate_report(results):
-    print("\n" + "="*95)
-    print("📊 FRACTAL PREDICTION REPORT (High Confidence Only)")
-    print("="*95)
+    print("=" * 130)
+    print(f"📊 PREDICT N+1 REPORT")
+    print("=" * 130)
     
     # Sort keys to ensure consistent order (Thai -> US -> Metals -> China -> Indices)
     # Custom sort order: GROUP_A, GROUP_B, GROUP_E, GROUP_C, GROUP_D, GROUP_F
@@ -152,6 +152,10 @@ def generate_report(results):
         print("-" * 130)
 
         for r in filtered_data:
+            # Filter low stats (< 30 matches)
+            if r['matches'] < 30:
+                continue
+
             # Logic: Predict & Prob
             avg_ret = r['avg_return']
             if avg_ret > 0:
@@ -252,6 +256,7 @@ def main():
                 fetch_summary['success'] += 1
                 for res in pattern_results:
                     res['group'] = group_name
+                    res['exchange'] = asset['exchange']  # Add actual exchange for performance logging
                     all_results.append(res)
             else:
                 fetch_summary['failed'] += 1

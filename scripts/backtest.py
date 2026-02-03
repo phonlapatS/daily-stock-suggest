@@ -134,6 +134,10 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
             actual = 'UP' if next_ret > 0 else 'DOWN'
             is_correct = 1 if forecast == actual else 0
             
+            # Calculate actual return percentage (needed for RR analysis)
+            # next_ret is a float (e.g., 0.015 for 1.5%), convert to percentage
+            actual_return_pct = next_ret * 100 
+
             total_predictions += 1
             correct_predictions += is_correct
             
@@ -143,6 +147,7 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
                 'forecast': forecast,
                 'prob': prob,
                 'actual': actual,
+                'actual_return': actual_return_pct, # Added for metrics analysis
                 'correct': is_correct
             })
         
@@ -230,16 +235,38 @@ def backtest_all(n_bars=200, skip_intraday=True):
             
             print(f"   [{i+1}/{min(10, len(assets))}] {symbol}...", end=" ")
             
-            result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=False)
+            result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=True)
             
             if result:
                 result['group'] = group_name
                 all_results.append(result)
                 print(f"✅ {result['accuracy']:.1f}%")
+                
+                # Collect detailed trades for metrics analysis
+                if 'detailed_predictions' in result:
+                    for trade in result['detailed_predictions']:
+                        trade['symbol'] = symbol
+                        trade['exchange'] = exchange
+                        trade['group'] = group_name
+                        all_trades.append(trade)
             else:
                 print("❌")
             
             time.sleep(0.3)  # Rate limit
+            
+    # Save Trade Logs to CSV (Phase 1 of Mentor Plan)
+    if all_trades:
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, 'trade_history.csv')
+        
+        df_trades = pd.DataFrame(all_trades)
+        # Reorder columns for readability
+        cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
+        df_trades = df_trades[cols]
+        
+        df_trades.to_csv(log_path, index=False)
+        print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
     
     # Summary
     if all_results:
