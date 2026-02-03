@@ -353,7 +353,26 @@ def main():
                 result = backtest_single(tv, symbol, exchange, n_bars=n_bars)
                 if result:
                     results.append(result)
+                    if 'detailed_predictions' in result:
+                        for trade in result['detailed_predictions']:
+                            trade['symbol'] = symbol
+                            trade['exchange'] = exchange
+                            trade['group'] = 'QUICK_TEST'
+                            all_trades.append(trade)
             
+            # Save Trade Logs to CSV (Quick Mode)
+            if all_trades:
+                log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
+                os.makedirs(log_dir, exist_ok=True)
+                log_path = os.path.join(log_dir, 'trade_history.csv')
+                
+                df_trades = pd.DataFrame(all_trades)
+                cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
+                df_trades = df_trades[cols]
+                
+                df_trades.to_csv(log_path, index=False)
+                print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
+                
             if results:
                 print("\n" + "=" * 60)
                 print("📊 SUMMARY")

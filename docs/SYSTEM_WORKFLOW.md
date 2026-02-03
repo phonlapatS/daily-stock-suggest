@@ -587,6 +587,8 @@ THAI    ฿6.90   +2.22%  Quiet          High     8.00%    0.0% +0.00%
    - Timestamped archives
    - Dashboard display
    - Filter/view tools
+   - Performance logs (Forecast verification)
+   - Mentor Metrics (RR Ratio, Audit Logs)
 
 4. **Documentation**
    - Calculation guides
@@ -602,10 +604,8 @@ THAI    ฿6.90   +2.22%  Quiet          High     8.00%    0.0% +0.00%
    - Notification system
 
 2. **Advanced Analytics**
-   - Backtesting engine
-   - Performance tracking
    - Strategy optimization
-   - Risk management system
+   - Advanced portfolio risk management
 
 3. **Visualization**
    - Charts/graphs
