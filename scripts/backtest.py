@@ -47,7 +47,22 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
             return None
         
         # Get date range
-        train_end = len(df) - n_bars
+        total_bars = len(df)
+        
+        # Adjust n_bars if total history is small
+        # We need at least some data for training "Pattern Stats"
+        # Let's say we want at least 50% for training if history is short
+        if n_bars >= total_bars * 0.8:
+            n_bars = int(total_bars * 0.3) # Fallback to 30% test set
+            if verbose:
+                print(f"⚠️ Adjusted test bars to {n_bars} (limited history)")
+        
+        train_end = total_bars - n_bars
+        
+        if train_end < 100:
+            if verbose:
+                print(f"❌ Not enough training data (Train: {train_end} bars)")
+            return None
         
         test_date_from = df.index[train_end].strftime('%Y-%m-%d')
         test_date_to = df.index[-1].strftime('%Y-%m-%d')
@@ -136,6 +151,11 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
             
             # Calculate actual return percentage (needed for RR analysis)
             # next_ret is a float (e.g., 0.015 for 1.5%), convert to percentage
+            actual = 'UP' if next_ret > 0 else 'DOWN'
+            is_correct = 1 if forecast == actual else 0
+            
+            # Calculate actual return percentage (needed for RR analysis)
+            # next_ret is a float (e.g., 0.015 for 1.5%), convert to percentage
             actual_return_pct = next_ret * 100 
 
             total_predictions += 1
@@ -191,7 +211,8 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
             'test_date_from': test_date_from,
             'test_date_to': test_date_to,
             'test_bars': n_bars,
-            'patterns_tested': len(pattern_stats)
+            'patterns_tested': len(pattern_stats),
+            'detailed_predictions': predictions  # Added for export
         }
         
     except Exception as e:
@@ -200,23 +221,26 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
         return None
 
 
-def backtest_all(n_bars=200, skip_intraday=True):
+def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
     """
     Backtest ทุกหุ้นจาก config.py
     
     Args:
         n_bars: จำนวน test bars
         skip_intraday: ข้าม intraday (Gold/Silver) ไหม
+        full_scan: If True, test ALL assets (no limit)
     """
     print("\n" + "=" * 70)
     print("🔬 BACKTEST ALL STOCKS")
     print("=" * 70)
     print(f"Test Period: {n_bars} bars ล่าสุด")
+    print(f"Mode: {'FULL SCAN (200+ Assets)' if full_scan else 'SAMPLE SCAN (10 per group)'}")
     print("=" * 70)
     
     tv = TvDatafeed()
     
     all_results = []
+    all_trades = [] # Initialize logs list
     
     for group_name, group_config in config.ASSET_GROUPS.items():
         # Skip intraday
@@ -229,11 +253,14 @@ def backtest_all(n_bars=200, skip_intraday=True):
         
         assets = group_config['assets']
         
-        for i, asset in enumerate(assets[:10]):  # Limit to 10 per group for speed
+        # Limit to 10 unless full_scan is True
+        target_assets = assets if full_scan else assets[:10]
+        
+        for i, asset in enumerate(target_assets):  
             symbol = asset['symbol']
             exchange = asset['exchange']
             
-            print(f"   [{i+1}/{min(10, len(assets))}] {symbol}...", end=" ")
+            print(f"   [{i+1}/{len(target_assets)}] {symbol}...", end=" ")
             
             result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=True)
             
@@ -254,10 +281,19 @@ def backtest_all(n_bars=200, skip_intraday=True):
             
             time.sleep(0.3)  # Rate limit
             
-    # Save Trade Logs to CSV (Phase 1 of Mentor Plan)
+    # Save Trade Logs to CSV (Phase 1.6: Advanced Filtering)
     if all_trades:
         log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
         os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, 'trade_history.csv')
+        
+        df_trades = pd.DataFrame(all_trades)
+        # Reorder columns for readability
+        cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
+        df_trades = df_trades[cols]
+        
+        df_trades.to_csv(log_path, index=False)
+        print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
         log_path = os.path.join(log_dir, 'trade_history.csv')
         
         df_trades = pd.DataFrame(all_trades)
@@ -328,11 +364,17 @@ def main():
     
     # Parse arguments
     if len(sys.argv) >= 2:
-        if sys.argv[1] == '--all':
-            # Backtest all stocks
+        if sys.argv[1] == '--full':
+            # NEW: Full Scan Mode
             if len(sys.argv) >= 3:
                 n_bars = int(sys.argv[2])
-            backtest_all(n_bars=n_bars)
+            backtest_all(n_bars=n_bars, full_scan=True)
+            
+        elif sys.argv[1] == '--all':
+            # Backtest all stocks (Sample 10)
+            if len(sys.argv) >= 3:
+                n_bars = int(sys.argv[2])
+            backtest_all(n_bars=n_bars, full_scan=False)
             
         elif sys.argv[1] == '--quick':
             # Quick test with 4 stocks
@@ -349,6 +391,8 @@ def main():
             
             tv = TvDatafeed()
             results = []
+            all_trades = [] # Initialize here
+            
             for symbol, exchange in default_stocks:
                 result = backtest_single(tv, symbol, exchange, n_bars=n_bars)
                 if result:

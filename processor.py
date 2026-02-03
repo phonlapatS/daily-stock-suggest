@@ -10,15 +10,40 @@ Implements:
 import pandas as pd
 import numpy as np
 import config
+import time
+from core.pattern_stats import PatternStatsManager
 
-def analyze_asset(df):
+# Initialize Global Stats Manager
+stats_manager = PatternStatsManager()
+
+def analyze_asset(df, symbol=None):
     """
-    Finds all unique patterns in history and calculates statistics for each.
-    Returns a LIST of pattern results (one per unique pattern found).
+    Finds and analyzes patterns. 
+    Supports Incremental Updates using PatternStatsManager.
     """
     try:
+        # --- STABILITY & RATE LIMITING ---
+        # Sleep to respect API limits (User requested stability > speed)
+        time.sleep(0.5) 
+        
         if df is None or len(df) < 50:
             return []
+            
+        # --- INCREMENTAL UPDATE LOGIC ---
+        if symbol:
+            try:
+                # Calculate patterns for the new data points (simplified check)
+                # In a real incremental system, we'd only scan the new rows.
+                # For V3.3 Phase 2, we will leverage the manager to update the Validated Stats.
+                # Use a specific 'patterns_dict' approach if we wanted perfect sync.
+                # For now, we allow the Manager to handle the heavy lifting if we implement the full flow.
+                # Here we continue to use real-time scanning for the *current* pattern prediction,
+                # but we can optionally trigger a background update for the Master CSV.
+                pass 
+            except Exception as e:
+                print(f"⚠️ Stats Update Failed for {symbol}: {e}")
+
+        # ==========================================
 
         # ==========================================
         # 1. Volatility Calculation
@@ -84,6 +109,27 @@ def analyze_asset(df):
         # ==========================================
         # 3. Calculate Statistics for Each Pattern
         # ==========================================
+        
+        # --- INCREMENTAL STATS UPDATE TRIGGER (Phase 2) ---
+        if symbol:
+            try:
+                # We need a map of {Date: Pattern} for update_stats
+                # pattern_occurrences is {Pattern: [Indices]}
+                # Invert it for efficient lookups by date
+                patterns_by_date = {}
+                for pat, indices in pattern_occurrences.items():
+                    for idx in indices:
+                        date_key = df.index[idx]
+                        patterns_by_date[date_key] = pat
+                
+                # Perform the update
+                stats_manager.update_stats(df, patterns_by_date, symbol)
+                
+            except Exception as e:
+                # Non-critical failure - don't stop prediction if stats update fails
+                print(f"⚠️ Warning: perform_stats_update failed: {e}")
+        # --------------------------------------------------
+
         results = []
         
         for pattern_str, occurrence_indices in pattern_occurrences.items():
