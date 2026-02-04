@@ -1,3 +1,6 @@
+# ⚠️ DEPRECATED DOCUMENT
+> **NOTE:** This document describes the legacy pipeline (V1/V2 data_updater.py). V3.4 uses `main.py` + `core/data_cache.py`. For the latest architecture, please refer to **[PROJECT_MASTER_MANUAL.md](PROJECT_MASTER_MANUAL.md)**.
+
 # Data Pipeline - Detailed Breakdown
 
 ## 📦 Overview

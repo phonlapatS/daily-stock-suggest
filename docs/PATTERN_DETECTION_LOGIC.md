@@ -1,3 +1,6 @@
+# ⚠️ DEPRECATED DOCUMENT
+> **NOTE:** This document describes V3.2 logic. For the latest V3.4 Adaptive Engine logic, please refer to **[PROJECT_MASTER_MANUAL.md](PROJECT_MASTER_MANUAL.md)**.
+
 # Predict N+1 System V3.2: Pattern Detection & Backtesting Logic
 
 ## 🎯 Overview

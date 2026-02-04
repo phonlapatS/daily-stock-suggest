@@ -1,3 +1,6 @@
+# ⚠️ DEPRECATED DOCUMENT
+> **NOTE:** This document shows V1/V2 architecture. For the new V3.4 System Diagrams, please refer to section "System Architecture" in **[PROJECT_MASTER_MANUAL.md](PROJECT_MASTER_MANUAL.md)**.
+
 # System Architecture - Mermaid Diagrams & Logic Explanation
 
 ## 🏗️ Complete System Architecture
