@@ -7,47 +7,56 @@ Fetch -> Process -> Categorize -> Report -> Forget.
 """
 import sys
 import time
+import os
 import pandas as pd
+from dotenv import load_dotenv
 from tvDatafeed import TvDatafeed
 import config
 import processor
 from core.scoring import calculate_confidence, calculate_risk_from_stats
 from core.performance import verify_forecast, log_forecast
+from core.data_cache import get_data_with_cache, get_cache_stats
 
-# Rate Limiting Config
-REQUEST_DELAY = 1.0  # Delay between requests (seconds)
+# Load environment variables from .env file
+load_dotenv()
+
+# Rate Limiting Config (reduced since cache handles most requests)
+REQUEST_DELAY = 0.5  # Reduced delay since cache reduces load
 BACKOFF_BASE = 2.0   # Exponential backoff multiplier
 
 def fetch_and_analyze(tv, asset_info, history_bars, interval):
+    """
+    Fetch data with smart caching and analyze.
+    - First run: Fetches 5000 bars, saves to cache
+    - Subsequent runs: Fetches ~50 bars delta, merges with cache
+    """
     symbol = asset_info['symbol']
     exchange = asset_info['exchange']
     
-    # Rate Limiting: Wait before each request
-    time.sleep(REQUEST_DELAY)
-    
-    # Retry Logic with Exponential Backoff
-    for attempt in range(3):
-        try:
-            df = tv.get_hist(
-                symbol=symbol,
-                exchange=exchange,
-                interval=interval,
-                n_bars=history_bars
-            )
-            if df is not None and not df.empty:
-                results_list = processor.analyze_asset(df)  # Returns list now
-                
-                # Use readable name if available (e.g., MOUTAI instead of 600519)
-                display_name = asset_info.get('name', symbol)
-                
-                # Add symbol to each result
-                for res in results_list:
-                    res['symbol'] = display_name
-                return results_list  # Return all patterns
-        except Exception as e:
-            # Exponential backoff: 2s, 4s, 8s
-            wait_time = BACKOFF_BASE ** (attempt + 1)
-            time.sleep(wait_time)
+    # Use cache-aware fetching
+    try:
+        df = get_data_with_cache(
+            tv=tv,
+            symbol=symbol,
+            exchange=exchange,
+            interval=interval,
+            full_bars=history_bars,
+            delta_bars=50  # Only fetch 50 bars when cache exists!
+        )
+        
+        if df is not None and not df.empty:
+            results_list = processor.analyze_asset(df)  # Returns list now
+            
+            # Use readable name if available (e.g., MOUTAI instead of 600519)
+            display_name = asset_info.get('name', symbol)
+            
+            # Add symbol to each result
+            for res in results_list:
+                res['symbol'] = display_name
+            return results_list  # Return all patterns
+            
+    except Exception as e:
+        pass  # Silently fail, cache module handles retries
             
     return []  # Return empty list on failure
 
@@ -224,13 +233,19 @@ def generate_report(results):
 
 def main():
     import time
+    import os
     start_time = time.time()
     
     print("🚀 Starting Fractal N+1 Prediction System...")
     
-    # Connect TV
+    # Connect TV - Use environment variables for credentials
     try:
-        tv = TvDatafeed(username="phonlapatS.2002@gmail.com", password="0656781986Get*")
+        tv_user = os.environ.get('TV_USERNAME', '')
+        tv_pass = os.environ.get('TV_PASSWORD', '')
+        if tv_user and tv_pass:
+            tv = TvDatafeed(username=tv_user, password=tv_pass)
+        else:
+            tv = TvDatafeed()  # No login (limited access)
     except Exception as e:
         print(f"❌ Connection Failed: {e}")
         return
