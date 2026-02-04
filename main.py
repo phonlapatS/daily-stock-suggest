@@ -14,11 +14,18 @@ import processor
 from core.scoring import calculate_confidence, calculate_risk_from_stats
 from core.performance import verify_forecast, log_forecast
 
+# Rate Limiting Config
+REQUEST_DELAY = 1.0  # Delay between requests (seconds)
+BACKOFF_BASE = 2.0   # Exponential backoff multiplier
+
 def fetch_and_analyze(tv, asset_info, history_bars, interval):
     symbol = asset_info['symbol']
     exchange = asset_info['exchange']
     
-    # Retry Logic for Fetch
+    # Rate Limiting: Wait before each request
+    time.sleep(REQUEST_DELAY)
+    
+    # Retry Logic with Exponential Backoff
     for attempt in range(3):
         try:
             df = tv.get_hist(
@@ -38,7 +45,9 @@ def fetch_and_analyze(tv, asset_info, history_bars, interval):
                     res['symbol'] = display_name
                 return results_list  # Return all patterns
         except Exception as e:
-            time.sleep(1)
+            # Exponential backoff: 2s, 4s, 8s
+            wait_time = BACKOFF_BASE ** (attempt + 1)
+            time.sleep(wait_time)
             
     return []  # Return empty list on failure
 
@@ -221,7 +230,7 @@ def main():
     
     # Connect TV
     try:
-        tv = TvDatafeed()
+        tv = TvDatafeed(username="phonlapatS.2002@gmail.com", password="0656781986Get*")
     except Exception as e:
         print(f"❌ Connection Failed: {e}")
         return
