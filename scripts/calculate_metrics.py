@@ -51,7 +51,7 @@ def print_table(df, title, icon="✅"):
             country = row['Country'] if 'Country' in row else 'GL'
             
             # Use lowercase 'symbol' because it comes from reset_index() on groupby key
-            print(f"{display_name:<15} {country:<4} {row['Signals']:>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}   {icon} PASS")
+            print(f"{display_name:<15} {country:<4} {int(row['Signals']):>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}   {icon} PASS")
         
     print("-" * 110)
     print(f"Count: {len(df)}")
@@ -81,7 +81,7 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
     # --- Step 1: Metrics Calculation Logic ---
     def calculate_symbol_metrics(group):
         total_trades = len(group)
-        if total_trades < 10: return None  # Skip if too few samples
+        if total_trades < 30: return None  # Filter out low sample size (Min 30)
         
         # 1. Probability (Win Rate)
         # Definition: Correct Prediction / Total Trades

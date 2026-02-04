@@ -41,7 +41,7 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
         df = tv.get_hist(symbol=symbol, exchange=exchange, 
                          interval=Interval.in_daily, n_bars=5000)
         
-        if df is None or len(df) < 1000:
+        if df is None or len(df) < 250:
             if verbose:
                 print(f"❌ Not enough data for {symbol}")
             return None
@@ -49,20 +49,42 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
         # Get date range
         total_bars = len(df)
         
-        # Adjust n_bars if total history is small
-        # We need at least some data for training "Pattern Stats"
-        # Let's say we want at least 50% for training if history is short
-        if n_bars >= total_bars * 0.8:
-            n_bars = int(total_bars * 0.3) # Fallback to 30% test set
-            if verbose:
-                print(f"⚠️ Adjusted test bars to {n_bars} (limited history)")
+        # --- DYNAMIC SPLIT STRATEGY (V3.4 Adaptive Logic) ---
+        # Goal: Optimize Train/Test split based on available history
+        # 1. Establish Minimum Requirements
+        # 2. Prefer Reference Data (Training) over Test Data
         
+        MIN_TRAIN_BARS = 200    # Need ~1 year to learn patterns
+        MIN_TEST_BARS = 20      # Need ~1 month to verify
+        
+        if total_bars < (MIN_TRAIN_BARS + MIN_TEST_BARS):
+            if verbose:
+                print(f"❌ Insufficient data ({total_bars} bars). Need min {MIN_TRAIN_BARS + MIN_TEST_BARS}.")
+            return None
+
+        # Logic A: Rich History (> 1000 bars)
+        # Use Fixed Window (Standardized Test)
+        if total_bars >= 1000:
+            final_test_bars = n_bars # Use requested (e.g. 200)
+            
+            # Safety check: if requested is huge (e.g. --full 5000), adjust
+            if final_test_bars > total_bars * 0.5:
+                final_test_bars = int(total_bars * 0.2) # Cap at 20%
+        
+        # Logic B: Limited History (220 - 1000 bars)
+        # Use Proportional Split (80% Train / 20% Test)
+        else:
+            final_test_bars = int(total_bars * 0.20)
+            # Ensure it meets min requirement
+            final_test_bars = max(MIN_TEST_BARS, final_test_bars)
+            
+            if verbose:
+                print(f"⚠️ Adaptive Split: History {total_bars} bars -> Testing last {final_test_bars} bars (20%)")
+        
+        n_bars = final_test_bars
         train_end = total_bars - n_bars
         
-        if train_end < 100:
-            if verbose:
-                print(f"❌ Not enough training data (Train: {train_end} bars)")
-            return None
+        # ---------------------------------------------------
         
         test_date_from = df.index[train_end].strftime('%Y-%m-%d')
         test_date_to = df.index[-1].strftime('%Y-%m-%d')
@@ -96,84 +118,146 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
             else:
                 patterns.append('')
         
-        # Build pattern stats from Training data
+        # Build pattern stats from Training data (Dynamic Lengths 3-8)
+        # We store stats for ALL lengths in a single flat dictionary (pattern strings are unique enough)
+        # Or better: just use the string as key. "+++" diff from "++++"
         pattern_stats = {}
         
-        for i in range(10, train_end - 1):
-            pat = ''.join(patterns[i-3:i+1])
-            if len(pat) < 2:
-                continue
-            
+        MIN_LEN = 3
+        MAX_LEN = 8
+        
+        # 1. TRAINING PHASE: Scan for patterns of all valid lengths
+        for i in range(MAX_LEN, train_end - 1):
+            # Check NEXT day return
             next_ret = pct_change.iloc[i+1]
-            if pd.isna(next_ret):
-                continue
-            
-            if pat not in pattern_stats:
-                pattern_stats[pat] = {'up': 0, 'down': 0}
-            
-            if next_ret > 0:
-                pattern_stats[pat]['up'] += 1
-            else:
-                pattern_stats[pat]['down'] += 1
+            if pd.isna(next_ret): continue
+
+            # For each length, extract pattern
+            for length in range(MIN_LEN, MAX_LEN + 1):
+                # Extract pattern of 'length' ending at i
+                # Note: patterns index i corresponds to pct_change i
+                # patterns array matches pct_change length.
+                
+                # Check bounds
+                if i - length + 1 < 0: continue
+                
+                # Construct pattern string
+                # pct_change is processed into 'patterns' list (lines 88-97)
+                # But 'patterns' list might contain empty strings '' for noise.
+                # If we want STRICT consecutive, we check if any is empty?
+                # The original logic (lines 103) strictly joined them: ''.join(...)
+                # If 'patterns' has empty string, it just disappears from join.
+                # E.g. [+, '', -] -> "+-" (length 2). 
+                # This affects "Time length" vs "Pattern length". 
+                # Let's stick to simple join for consistency with original logic, 
+                # BUT allow looking back 'length' bars.
+                
+                sub_pat_list = patterns[i-length+1 : i+1]
+                pat = ''.join(sub_pat_list)
+                
+                if len(pat) < MIN_LEN:
+                    continue
+                
+                if pat not in pattern_stats:
+                    pattern_stats[pat] = {'up': 0, 'down': 0}
+                
+                if next_ret > 0:
+                    pattern_stats[pat]['up'] += 1
+                else:
+                    pattern_stats[pat]['down'] += 1
         
         if verbose:
-            print(f"   Patterns found: {len(pattern_stats)}")
+            print(f"   Patterns found (Dynamic 3-{MAX_LEN}): {len(pattern_stats)}")
         
-        # Test on Test data
+        # 2. TESTING PHASE
         total_predictions = 0
         correct_predictions = 0
         predictions = []
         
         for i in range(train_end, len(df) - 1):
-            pat = ''.join(patterns[i-3:i+1])
-            if len(pat) < 2 or pat not in pattern_stats:
+            next_ret = pct_change.iloc[i+1]
+            if pd.isna(next_ret): continue
+            
+            # Identify the BEST pattern for today (i)
+            # We look for lengths 3..8, check stats, pick best.
+            
+            candidate_pats = []
+            
+            for length in range(MIN_LEN, MAX_LEN + 1):
+                if i - length + 1 < 0: continue
+                sub_pat_list = patterns[i-length+1 : i+1]
+                pat = ''.join(sub_pat_list)
+                
+                if len(pat) < MIN_LEN: continue
+                
+                if pat in pattern_stats:
+                    stats = pattern_stats[pat]
+                    total = stats['up'] + stats['down']
+                    if total < min_stats: continue
+                    
+                    bull_prob = (stats['up'] / total) * 100
+                    
+                    candidate_pats.append({
+                        'length': length, # This is 'window' length, not string length
+                        'pattern': pat,
+                        'prob': bull_prob,
+                        'total': total
+                    })
+            
+            if not candidate_pats:
                 continue
+                
+            # SELECTION LOGIC: Max Effective Length
+            # Prioritize: 
+            # 1. High Probability (> 55% or < 45%) - "Strong Signal"
+            # 2. If multiple strong, pick LONGEST (Most specific context)
             
-            stats = pattern_stats[pat]
-            total = stats['up'] + stats['down']
+            strong_candidates = [c for c in candidate_pats if abs(c['prob'] - 50) > 5]
             
-            if total < min_stats:
-                continue
+            if strong_candidates:
+                # Pick longest from strong
+                best_match = sorted(strong_candidates, key=lambda x: x['length'], reverse=True)[0]
+            else:
+                # No strong signal? 
+                # Option A: Skip trade (Conservative)
+                # Option B: Pick longest valid (Original behavior often took what it found)
+                # Let's Skip to improve quality (Status: NO_TRADE) -> Loop continues
+                # BUT user wants to reproduce result.
+                # Let's fallback to "Best of what we have" but prioritize accuracy.
+                # Actually, let's pick the one with highest deviation from 50 (Most Conviction)
+                best_match = sorted(candidate_pats, key=lambda x: abs(x['prob'] - 50), reverse=True)[0]
+
+            # Execute Trade on Best Match
+            stats = pattern_stats[best_match['pattern']]
+            total = best_match['total']
+            prob = best_match['prob']
             
-            if stats['up'] > stats['down']:
+            if prob > 50:
                 forecast = 'UP'
-                prob = stats['up'] / total * 100
             else:
                 forecast = 'DOWN'
-                prob = stats['down'] / total * 100
-            
-            next_ret = pct_change.iloc[i+1]
-            if pd.isna(next_ret):
-                continue
-            
-            actual = 'UP' if next_ret > 0 else 'DOWN'
-            is_correct = 1 if forecast == actual else 0
-            
-            # Calculate actual return percentage (needed for RR analysis)
-            # next_ret is a float (e.g., 0.015 for 1.5%), convert to percentage
-            actual = 'UP' if next_ret > 0 else 'DOWN'
-            is_correct = 1 if forecast == actual else 0
-            
-            # Calculate actual return percentage (needed for RR analysis)
-            # next_ret is a float (e.g., 0.015 for 1.5%), convert to percentage
-            actual_return_pct = next_ret * 100 
+                prob = 100 - prob # Display prob of winning (Bearish win)
 
+            actual = 'UP' if next_ret > 0 else 'DOWN'
+            is_correct = 1 if forecast == actual else 0
+            actual_return_pct = next_ret * 100 
+            
             total_predictions += 1
             correct_predictions += is_correct
             
             predictions.append({
                 'date': df.index[i],
-                'pattern': pat,
+                'pattern': best_match['pattern'],
                 'forecast': forecast,
                 'prob': prob,
                 'actual': actual,
-                'actual_return': actual_return_pct, # Added for metrics analysis
+                'actual_return': actual_return_pct,
                 'correct': is_correct
             })
         
         if total_predictions == 0:
             if verbose:
-                print("❌ No forecasts (no patterns met min_stats threshold)")
+                print("❌ No valid forecasts found (Dynamic logic)")
             return None
         
         accuracy = correct_predictions / total_predictions * 100
@@ -289,7 +373,27 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
             
             print(f"   [{i+1}/{len(target_assets)}] {symbol}...", end=" ")
             
-            result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=True)
+            # Retry Logic with Auto-Reconnect
+            max_retries = 3
+            result = None
+            
+            for attempt in range(max_retries):
+                try:
+                    # Pass the current TV instance
+                    result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=True)
+                    break # Success
+                except Exception as e:
+                    errMsg = str(e)
+                    if "Connection" in errMsg or "no data" in errMsg:
+                        print(f"⚠️ Connection Lost ({errMsg}). Reconnecting... (Attempt {attempt+1}/{max_retries})")
+                        try:
+                            tv = TvDatafeed() # Re-init
+                            time.sleep(2)
+                        except:
+                            pass
+                    else:
+                        print(f"❌ Error: {e}")
+                        break # Non-network error, skip
             
             if result:
                 result['group'] = group_name
