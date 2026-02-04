@@ -177,13 +177,46 @@ python3 scripts/view_accuracy.py
 
 ---
 
-## 8. Version History (Summary)
+## 8. Project Evolution & History (The Journey)
+This section documents the development timeline from the initial prototype to the current Adaptive Engine.
 
-*   **V1.0:** Basic matching.
-*   **V2.0:** Multi-timeframe.
-*   **V3.1:** Strict Thresholds.
-*   **V3.3:** Performance Logging.
-*   **V3.4 (Current):** Adaptive Engine (Dynamic Pattern + Cache).
+### 📅 Phase 1: The Foundation (V1.0 - V2.0)
+*   **V1.0 (Inception):**
+    *   *Concept:* Can we predict tomorrow's price based on the last 3 days?
+    *   *Logic:* Fixed 3-day pattern matching (e.g., `++-` → ?).
+    *   *Limit:* Only worked on single stock (hardcoded).
+*   **V2.0 (Multi-Timeframe):**
+    *   *Upgrade:* Added support for Day/Week/Month timeframes.
+    *   *Feature:* Basic Euclidean distance matching (finding "similar" shapes).
+
+### 📅 Phase 2: The Statistical Era (V3.0 - V3.3)
+*   **V3.0 (Statistical Filtering):**
+    *   *Shift:* Moved from "Shape Matching" to "Binary Pattern" (`+` or `-`).
+    *   *Metric:* Added "Win Rate" calculation (Probability).
+*   **V3.1 (Strict Thresholds):**
+    *   *Problem:* Small noise (0.1%) was counted as a trend.
+    *   *Solution:* Integrated **Dynamic Volatility Thresholds** (Adaptive +/-).
+    *   *Outcome:* "Wait & See" signal added for sideways markets.
+*   **V3.2 (Scoring System):**
+    *   *Feature:* Introduced **Confidence Score** (Sample Size weight) & **Risk Score** (Drawdown).
+*   **V3.3 (Reporting & Metrics):**
+    *   *Output:* Created the **4-Table Strategy** (Strict, Balanced, Obs, Sens).
+    *   *Logging:* Added `core/performance.py` to track daily accuracy vs actuals.
+
+### 📅 Phase 3: The Adaptive Engine (Current V3.4)
+*   **V3.4 (Adaptive Logic):**
+    *   *Breakthrough:* System now scans **3 to 8 day patterns** dynamically.
+    *   *Optimization:* Finds the "Golden Length" for each stock (some respect 3-day cycles, others 5-day).
+    *   *Infrastructure:* Added **Local Caching System** (reduces API time by 99%).
+    *   *Expansion:* Full Universe support (Thai SET100, US Tech, China, Metals).
+    *   *Real-time:* Added **Intraday Scanner** for Gold/Silver (15m/30m).
 
 ---
-*End of Manual*
+
+## 9. Next Steps (Roadmap V3.5+)
+*   **Trend Following:** Integrate Moving Averages (EMA20/50) to filter counter-trend signals.
+*   **Web Dashboard:** Move from Console/CSV to a simple Web UI (Streamlit).
+*   **Notification Bot:** Connect `intraday_runner.py` to Line/Telegram API.
+
+---
+*End of Master Manual*
