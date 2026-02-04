@@ -116,6 +116,24 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     summary_df.drop(columns=['_is_pass']).to_csv(output_path, index=False)
     
+# Resolve path for config import
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import config
+
+# Helper to build symbol name map
+def get_symbol_map():
+    mapping = {}
+    for group in config.ASSET_GROUPS.values():
+        for asset in group['assets']:
+            if 'name' in asset:
+                mapping[asset['symbol']] = asset['name']
+    return mapping
+
+SYMBOL_MAP = get_symbol_map()
+
 # ==============================================================================
 # Helper Function: Print Standardized Table
 # ==============================================================================
@@ -130,15 +148,19 @@ def print_table(df, title, icon="✅"):
     """
     print(f"\n{title}")
     print("=" * 105)
-    print(f"{'Symbol':<10} {'Signals':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}   {'Status'}")
+    print(f"{'Symbol':<15} {'Signals':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}   {'Status'}")
     print("-" * 105)
     
     if df.empty:
         print(f"{'No candidates found matching criteria.':^105}")
     else:
         for _, row in df.iterrows():
+            # Resolve display name
+            sym = row['symbol']
+            display_name = SYMBOL_MAP.get(str(sym), str(sym))
+            
             # Use lowercase 'symbol' because it comes from reset_index() on groupby key
-            print(f"{row['symbol']:<10} {row['Signals']:>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}   {icon} PASS")
+            print(f"{display_name:<15} {row['Signals']:>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}   {icon} PASS")
         
     print("-" * 105)
     print(f"Count: {len(df)}")
