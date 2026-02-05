@@ -38,7 +38,7 @@ def print_table(df, title, icon="✅"):
     """
     print(f"\n{title}")
     print("=" * 110)
-    print(f"{'Symbol':<15} {'Ctry':<4} {'Count':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}")
+    print(f"{'Symbol':<15} {'Ctry':<8} {'Count':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}")
     print("-" * 110)
     
     if df.empty:
@@ -81,7 +81,7 @@ def print_table(df, title, icon="✅"):
 
         # Print Processed Data
         for row in processed_data:
-            print(f"{row['display_name']:<15} {row['Country']:<6} {int(row['Signals']):>6} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}")
+            print(f"{row['display_name']:<15} {row['Country']:<8} {int(row['Signals']):>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}")
         
     print("-" * 110)
     print(f"Count: {len(df)}")
