@@ -38,7 +38,7 @@ def print_table(df, title, icon="✅"):
     """
     print(f"\n{title}")
     print("=" * 110)
-    print(f"{'Symbol':<15} {'Ctry':<4} {'Signals':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}")
+    print(f"{'Symbol':<15} {'Ctry':<4} {'Count':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}")
     print("-" * 110)
     
     if df.empty:
