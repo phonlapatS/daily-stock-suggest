@@ -38,7 +38,7 @@ def print_table(df, title, icon="✅"):
     """
     print(f"\n{title}")
     print("=" * 110)
-    print(f"{'Symbol':<15} {'Ctry':<8} {'Count':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}")
+    print(f"{'Symbol':<15} {'Ctry':<8} {'Count':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RRR':>8}")
     print("-" * 110)
     
     if df.empty:
@@ -176,9 +176,9 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         (summary_df['Group'].str.contains('THAI', na=False)) & 
         (summary_df['Prob%'] > 60.0) & 
         (summary_df['RR_Ratio'] > 2.0)
-    ].sort_values(by=['RR_Ratio', 'Prob%'], ascending=[False, False])
+    ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
     
-    print_table(thai_strict, "💎 TABLE 1: THAI STRICT (Prob > 60% | RR > 2.0)", icon="✅")
+    print_table(thai_strict, "💎 TABLE 1: THAI STRICT (Prob > 60% | RRR > 2.0)", icon="✅")
 
     # TABLE 2: THAI MARKET - BALANCED (Candidates)
     # Criteria: Prob > 60% AND 1.5 < RR <= 2.0 (Exclusive of Strict)
@@ -187,9 +187,9 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         (summary_df['Prob%'] > 60.0) & 
         (summary_df['RR_Ratio'] > 1.5) &
         (summary_df['RR_Ratio'] <= 2.0)
-    ].sort_values(by=['RR_Ratio', 'Prob%'], ascending=[False, False])
+    ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
     
-    print_table(thai_balanced, "🇹🇭 TABLE 2: THAI BALANCED (Prob > 60% | 1.5 < RR <= 2.0)", icon="✅")
+    print_table(thai_balanced, "🇹🇭 TABLE 2: THAI BALANCED (Prob > 60% | 1.5 < RRR <= 2.0)", icon="✅")
 
     # TABLE 3: INTERNATIONAL MARKET (Observation)
     # Criteria: Prob > 55% AND RR > 1.1 
@@ -197,9 +197,9 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         (~summary_df['Group'].str.contains('THAI', na=False)) & 
         (summary_df['Prob%'] > 55.0) & 
         (summary_df['RR_Ratio'] > 1.1)
-    ].sort_values(by=['RR_Ratio', 'Prob%'], ascending=[False, False])
+    ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
     
-    print_table(inter_df, "🌍 TABLE 3: INTERNATIONAL OBSERVATION (Prob > 55% | RR > 1.1)", icon="✅")
+    print_table(inter_df, "🌍 TABLE 3: INTERNATIONAL OBSERVATION (Prob > 55% | RRR > 1.1)", icon="✅")
 
     # TABLE 4: INTERNATIONAL SENSITIVITY (Deep Dive)
     # Criteria: Prob > 50% (Lower for deep dive) AND 0.5 < RR <= 1.1
@@ -208,9 +208,9 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         (summary_df['Prob%'] > 50.0) & 
         (summary_df['RR_Ratio'] > 0.5) &
         (summary_df['RR_Ratio'] <= 1.1)
-    ].sort_values(by=['RR_Ratio', 'Prob%'], ascending=[False, False])
+    ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
     
-    print_table(inter_low_df, "📉 TABLE 4: INTERNATIONAL MARKET DIRECTION (Prob > 50% | 0.5 < RR <= 1.1)", icon="✅")
+    print_table(inter_low_df, "📉 TABLE 4: INTERNATIONAL MARKET DIRECTION (Prob > 50% | 0.5 < RRR <= 1.1)", icon="✅")
 
     print(f"\n💾 Detailed report saved to: {output_path}")
 

@@ -163,6 +163,15 @@ python3 main.py
 ```
 *Output:* `data/pattern_results.csv` and Console Report.
 
+#### 🕒 Recommended Run Times (Thailand Time)
+| Market Focus | Best Time | Logic |
+| :--- | :--- | :--- |
+| **THAI Stocks (SET)** | **17:00 - 18:00** | Market closes ~16:40. Data is fresh for tomorrow's plan. |
+| **US/Global Stocks** | **18:00 (Evening)** | Uses **last night's** close. Perfect for planning tonight's trade (Market opens 21:30). |
+| **US/Global Stocks** | **07:00 (Morning)** | Uses **tonight's** close. Best for "Post-Market" analysis (but too late for trade planning). |
+
+> **💡 Pro Tip:** Run at **18:00** to catch both markets effectively (SET for tomorrow, US for tonight).
+
 ### Intraday Monitoring (Real-time)
 To start the Gold/Silver scanner:
 ```bash

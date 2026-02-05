@@ -48,17 +48,15 @@ def run_intraday_scan(tv):
                 if not results:
                     continue
                     
-                # Check for High Probability Setup
+                # Check for Market Probability Setup (Intraday is Noisy, so > 50% is enough)
                 for res in results:
-                    # Filter: Prob > 60%
-                    if res['prob'] >= 60.0:
+                    # Filter: Prob > 50% (Specific for XAU/XAG Intraday Scalping)
+                    if res['prob'] >= 50.0:
                         found_any = True
-                        print(f"   🚀 SIGNAL FOUND: {symbol} ({interval_str})")
-                        print(f"      Pattern: {res['pattern']}")
-                        print(f"      Forecast: {res['forecast']} (Prob: {res['prob']:.1f}%)")
-                        print(f"      Stats: AvgWin {res['avg_win']:.2f}% | AvgLoss {res['avg_loss']:.2f}%")
-                        print(f"      RR Ratio: {res['rr_ratio']:.2f}")
-                        print(f"      Matches: {res['matches_found']}")
+                        print(f"   🚀 ALERT: {symbol} ({interval_str}) | {res['forecast']} | Prob: {res['prob']:.1f}%")
+                        print(f"      👉 Action: Scalp {res['forecast']} on Next Candle")
+                        print(f"      Pattern: {res['pattern']} (Matches: {res['matches_found']})")
+                        print(f"      Stats: AvgWin {res['avg_win']:.2f}% | AvgLoss {res['avg_loss']:.2f}% | RR: {res['rr_ratio']:.2f}")
                         print("-" * 40)
                         
             except Exception as e:

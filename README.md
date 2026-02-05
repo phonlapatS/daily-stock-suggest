@@ -1,13 +1,12 @@
-# Stock Prediction System (v3.1)
+# Stock Prediction System (v3.4)
 
 📊 **Fractal N+1 Prediction System - Pure Data-Driven**
 
-> **🆕 Version 3.1 Updates (2026-01-21):** Refined Logic & Enhanced Reporting!
-> - ✅ **Strict Logic:** "FLAT" days (within threshold) now **break the streak**. Logic is tighter and more precise.
-> - ✅ **Hybrid Volatility Threshold:** Uses `Max(20-day SD, 50% of 1-Year SD)` to handle both volatile and flat markets.
-> - ✅ **Corrected Probability:** Prob = `Count / (UP + DOWN)`. FLAT days are excluded from the denominator to ensure `Prob >= 50%`.
-> - ✅ **Streak Profile:** New "Momentum" table showing the survival rate of consecutive UP/DOWN streaks.
-> - ✅ **Intraday Metals:** Support for Gold (XAUUSD) & Silver (XAGUSD) analysis.
+> **🆕 Version 3.4 Updates (2026-02-05):** "The Adaptive Engine"
+> - ✅ **Adaptive Logic:** Scans pattern lengths from 3 to 8 days dynamically.
+> - ✅ **Smart Cache:** Reduces API calls by 99% using local OHLC storage.
+> - ✅ **Intraday Scanner:** Real-time monitoring for Gold/Silver (15m/30m).
+> - ✅ **Market Sentiment:** New dashboard for global market direction.
 
 ## 🌎 Supported Assets (Total: 255+)
 
@@ -16,87 +15,56 @@
 | **🇹🇭 THAI** | SET100+ | 118 | Large & Mid-cap Thai Stocks (ADVANC, PTT, KBANK) |
 | **🇺🇸 US** | NASDAQ 100 | 98 | US Tech Giants (NVDA, TSLA, AAPL, MSFT) |
 | **🇨🇳 CHINA** | Tech & Economy | 13 | US ADRs (BABA, JD, PDD) |
-| **⚡ METALS** | Gold & Silver | 4 | XAUUSD, XAGUSD (15m, 30m, 1h) |
+| **⚡ METALS** | Gold & Silver | 4 | XAUUSD, XAGUSD (15m, 30m) |
 
 ---
 
-## 💡 Concept: Hybrid Logic
+## 🚀 Usage (Quick Start)
 
-**1. Dynamic Thresholding (Adaptive Noise Filter)**
-Instead of a fixed percentage, we use a **Hybrid Volatility Threshold**:
-*   **Short-Term:** 1.25 * SD (Standard Deviation) of the last **20 days**.
-*   **Long-Term Floor:** 50% of the 1-Year SD.
-*   **Logic:** `Threshold = Max(Short-Term, Long-Term Floor)`
-*   *Why?* prevents the threshold from becoming too small in extremely calm markets, reducing false signals (overfitting).
-
-**2. Strict Pattern Recognition**
-*   **UP (+)**: Price Change > +Threshold
-*   **DOWN (-)**: Price Change < -Threshold
-*   **FLAT**: Price Change within ±Threshold
-*   *Rule:* A **FLAT** day immediately **breaks** a streak. We only count pure momentum.
-
----
-
-## 🚀 Usage
-
-### 1. View Report (Single Asset)
-Detailed analysis including Master Pattern Stats and Streak Profile.
+### 1. View Daily Report (The Main Tool)
+Analyzes all 255+ assets and generates the 4-Table Report.
 ```bash
-python view_report.py [SYMBOL]
-# Example: python view_report.py ADVANC
+python3 main.py
+```
+*Best Time:* 18:00 (Evening) - Catch SET closing & US pre-market.
+
+### 2. Intraday Scanner (Gold/Silver)
+Real-time loop for spotting 15m/30m scalping opportunities.
+```bash
+python3 scripts/intraday_runner.py
 ```
 
-### 2. Batch Processing (All Assets)
-Process all 255+ assets and generate `Master_Pattern_Stats.csv` and `Streak_Profile.csv`.
+### 3. Check Market Sentiment
+View the overall Bullish/Bearish balance for tomorrow.
 ```bash
-python batch_processor.py
-```
-
-### 3. Check Gold/Silver Intraday
-```bash
-python scripts/check_gold_silver.py
+python3 scripts/market_sentiment.py
 ```
 
 ---
 
-## 📊 Output Example (view_report.py)
+## 💡 Concept: The Adaptive Engine
 
-```text
-===============================================================
-=================
-📄 PART 1: MASTER PATTERN STATS (Tomorrow's Forecast) [Threshold: ±1.40%]
-===============================================================
-=================
-Pattern    Category   Chance     Prob   Stats           Avg_Ret
---------------------------------------------------------------------------------
-+-+        Reversal   🔴 DOWN    57%    4/7 (5000)      -0.5%
-...
+**1. Dynamic Pattern Recognition**
+Unlike previous versions that fixed pattern length (e.g., 3 days), V3.4 finds the "Golden Length" for each asset (3-8 days) based on historical accuracy.
 
-===============================================================
-=================
-📄 PART 2: STREAK PROFILE (Momentum)
-===============================================================
-=================
-Type   Day         Stats               Prob
----------------------------------------------------------------
-UP     1         465/582     🔴 REV. (79.9%)        
-UP     2          90/117     🔴 REV. (76.9%)        
-```
+**2. 4-Table Strategy**
+*   **Table 1: Thai Strict** (Prob > 60%, RR > 2.0) → *Sniper Mode*
+*   **Table 2: Thai Balanced** (Prob > 60%, RR > 1.5) → *Cash Flow*
+*   **Table 3: Intl Observation** (Prob > 55%) → *Watchlist*
+*   **Table 4: Market Direction** (Prob > 50%) → *Market Radar*
 
 ---
 
 ## 📈 Changelog
 
+### v3.4 (2026-02-05)
+- **Adaptive Engine:** Dynamic pattern length (3-8 days).
+- **Caching System:** `core/data_cache.py` for speed.
+- **Reporting:** Rebranded "Signals" to "Count" and "Sensitivity" to "Market Direction".
+
 ### v3.1 (2026-01-21)
 - **Strict Logic:** FLAT days break streaks.
 - **Hybrid Threshold:** `Max(20d SD, 0.5 * 1y SD)`.
-- **Prob Fix:** Exclude FLAT from Prob denominator.
-- **UI:** Merged "Continued/Reached" columns in Streak Profile.
-
-### v2.0 (2026-01-21)
-- **New Assets:** China Tech & Economy ADRs.
-- **Dynamic Reporting:** Grouped tables.
-- **Optimization:** SD 1.25 & 5000 Bars history.
 
 ---
 
