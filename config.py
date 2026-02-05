@@ -77,31 +77,51 @@ ASSET_GROUPS = {
         "description": "US Market (NASDAQ)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
-        "assets": [{'symbol': s, 'exchange': 'NASDAQ'} for s in NASDAQ_STOCKS]
+        "assets": [{'symbol': s, 'exchange': 'NASDAQ'} for s in NASDAQ_STOCKS],
+        "fixed_threshold": 0.6 # Mentor suggestion
     },
-    "GROUP_C_METALS": {
-        "description": "Intraday Metals (Gold/Silver)",
+    # ==========================================
+    # METALS - Split by Asset for Optimized Thresholds
+    # (Based on Backtest Analysis: 5000 bars per TF)
+    # ==========================================
+    
+    # GOLD (XAUUSD) - Optimal: 0.10% for both timeframes
+    "GROUP_C1_GOLD_30M": {
+        "description": "Gold Intraday 30min",
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
-        "assets": [
-            {'symbol': 'XAUUSD', 'exchange': 'OANDA'}, 
-            {'symbol': 'XAGUSD', 'exchange': 'OANDA'}
-        ]
+        "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
+        "fixed_threshold": 0.10  # Backtest: 90 trades, RR 1.74
     },
-    "GROUP_D_METALS_15M": {
-        "description": "Intraday Metals 15min (Gold/Silver)",
+    "GROUP_C2_GOLD_15M": {
+        "description": "Gold Intraday 15min",
         "interval": Interval.in_15_minute,
-        "history_bars": 5000,  # ~2.5 เดือน
-        "assets": [
-            {'symbol': 'XAUUSD', 'exchange': 'OANDA'}, 
-            {'symbol': 'XAGUSD', 'exchange': 'OANDA'}
-        ]
+        "history_bars": 5000,
+        "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
+        "fixed_threshold": 0.10  # Backtest: 108 trades, RR 0.96
+    },
+    
+    # SILVER (XAGUSD) - Different optimal thresholds per TF
+    "GROUP_D1_SILVER_30M": {
+        "description": "Silver Intraday 30min",
+        "interval": Interval.in_30_minute,
+        "history_bars": 5000,
+        "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
+        "fixed_threshold": 0.15  # Backtest: 34 trades, Acc 61.8%, RR 1.01
+    },
+    "GROUP_D2_SILVER_15M": {
+        "description": "Silver Intraday 15min",
+        "interval": Interval.in_15_minute,
+        "history_bars": 5000,
+        "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
+        "fixed_threshold": 0.20  # Backtest: 53 trades, RR 1.42
     },
     "GROUP_E_CHINA_ADR": {
         "description": "China ADRs (US Market)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
-        "assets": CHINA_ADR_STOCKS + CHINA_ECONOMY_STOCKS
+        "assets": CHINA_ADR_STOCKS + CHINA_ECONOMY_STOCKS,
+        "fixed_threshold": 0.6
     },
     "GROUP_F_CHINA_A": {
         "description": "China A-Shares (Shanghai/Shenzhen)",
@@ -114,7 +134,8 @@ ASSET_GROUPS = {
             {'symbol': '300750', 'exchange': 'SZSE', 'name': 'CATL'},       # CATL
             {'symbol': '002594', 'exchange': 'SZSE', 'name': 'BYD-SZ'},     # BYD (SZ)
             {'symbol': '600036', 'exchange': 'SSE', 'name': 'CM-BANK'},    # China Merchants Bank
-        ]
+        ],
+        "fixed_threshold": 0.6
     },
     "GROUP_G_HK_TECH": {
         "description": "Hong Kong Tech (HKEX)",
@@ -127,7 +148,8 @@ ASSET_GROUPS = {
             {'symbol': '1810', 'exchange': 'HKEX', 'name': 'XIAOMI'},      # Xiaomi
             {'symbol': '9618', 'exchange': 'HKEX', 'name': 'JD-COM'},      # JD.com
             {'symbol': '1211', 'exchange': 'HKEX', 'name': 'BYD-HK'},      # BYD (HK)
-        ]
+        ],
+        "fixed_threshold": 0.6
     },
     "GROUP_H_TAIWAN": {
         "description": "Taiwan Semiconductor (TWSE)",
@@ -139,6 +161,7 @@ ASSET_GROUPS = {
             {'symbol': '2317', 'exchange': 'TWSE', 'name': 'FOXCONN'},     # Hon Hai
             {'symbol': '2308', 'exchange': 'TWSE', 'name': 'DELTA'},       # Delta Electronics
             {'symbol': '2303', 'exchange': 'TWSE', 'name': 'UMC'},         # UMC
-        ]
+        ],
+        "fixed_threshold": 0.6
     }
 }

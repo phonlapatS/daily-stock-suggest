@@ -16,10 +16,15 @@ from core.pattern_stats import PatternStatsManager
 # Initialize Global Stats Manager
 stats_manager = PatternStatsManager()
 
-def analyze_asset(df, symbol=None):
+def analyze_asset(df, symbol=None, fixed_threshold=None):
     """
     Finds and analyzes patterns. 
     Supports Incremental Updates using PatternStatsManager.
+    Args:
+        df: DataFrame with OHLC data
+        symbol: Symbol name (optional)
+        fixed_threshold: If set (e.g. 0.5), overrides dynamic volatility calculation.
+                        Value should be in percentage (0.5 = 0.5%).
     """
     try:
         # --- STABILITY & RATE LIMITING ---
@@ -51,17 +56,34 @@ def analyze_asset(df, symbol=None):
         close = df['close']
         pct_change = close.pct_change()
         
-        # Calculate Rolling SD
-        short_term_std = pct_change.rolling(window=config.VOLATILITY_WINDOW).std()
-        long_term_std = pct_change.rolling(window=252).std()
-        
-        # Hybrid Effective Volatility
-        long_term_floor = long_term_std * 0.50
-        effective_std = np.maximum(short_term_std, long_term_floor.fillna(0))
-        effective_std = effective_std.fillna(short_term_std)
+        # Determine Effective Standard Deviation (Threshold Base)
+        if fixed_threshold is not None:
+            # === MODE A: Fixed Threshold (Mentor Request) ===
+            # Override dynamic calc with a fixed percentage
+            # e.g. fixed_threshold = 0.5 -> current_std = 0.005
+            fixed_std_val = fixed_threshold / 100.0
+            
+            # Create a Series relative to the index to match expected format
+            effective_std = pd.Series(fixed_std_val, index=pct_change.index)
+            
+            # For fixed mode, the "current_std" is just the fixed value
+            current_std = fixed_std_val
+            
+        else:
+            # === MODE B: Dynamic Volatility (Original Logic) ===
+            # Calculate Rolling SD
+            short_term_std = pct_change.rolling(window=config.VOLATILITY_WINDOW).std()
+            long_term_std = pct_change.rolling(window=252).std()
+            
+            # Hybrid Effective Volatility
+            long_term_floor = long_term_std * 0.50
+            effective_std = np.maximum(short_term_std, long_term_floor.fillna(0))
+            effective_std = effective_std.fillna(short_term_std)
+            
+            current_std = effective_std.iloc[-1]
 
         current_change = pct_change.iloc[-1]
-        current_std = effective_std.iloc[-1]
+        # current_std is already set above
         current_price = close.iloc[-1]
         
         if current_std == 0 or np.isnan(current_std):

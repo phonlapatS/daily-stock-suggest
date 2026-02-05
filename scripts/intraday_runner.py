@@ -19,8 +19,13 @@ def run_intraday_scan(tv):
     print(f"⏰ INTRADAY SCAN: {get_timestamp()}")
     print(f"========================================================")
     
-    # Target Groups: C (30m) & D (15m)
-    target_groups = ["GROUP_C_METALS", "GROUP_D_METALS_15M"]
+    # Target Groups: Split Gold/Silver with Optimized Thresholds
+    target_groups = [
+        "GROUP_C1_GOLD_30M", 
+        "GROUP_C2_GOLD_15M", 
+        "GROUP_D1_SILVER_30M", 
+        "GROUP_D2_SILVER_15M"
+    ]
     
     found_any = False
     
@@ -41,9 +46,12 @@ def run_intraday_scan(tv):
                 
                 if df is None or df.empty:
                     continue
-                    
-                # Analyze
-                results = analyze_asset(df, symbol=symbol)
+                
+                # Get fixed_threshold from config (if exists)
+                fixed_thresh = group_conf.get('fixed_threshold', None)
+                
+                # Analyze with threshold override
+                results = analyze_asset(df, symbol=symbol, fixed_threshold=fixed_thresh)
                 
                 if not results:
                     continue

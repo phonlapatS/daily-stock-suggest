@@ -24,11 +24,12 @@ load_dotenv()
 REQUEST_DELAY = 0.5  # Reduced delay since cache reduces load
 BACKOFF_BASE = 2.0   # Exponential backoff multiplier
 
-def fetch_and_analyze(tv, asset_info, history_bars, interval):
+def fetch_and_analyze(tv, asset_info, history_bars, interval, fixed_threshold=None):
     """
     Fetch data with smart caching and analyze.
     - First run: Fetches 5000 bars, saves to cache
     - Subsequent runs: Fetches ~50 bars delta, merges with cache
+    - fixed_threshold: If set, overrides dynamic volatility (for Intl/Metals)
     """
     symbol = asset_info['symbol']
     exchange = asset_info['exchange']
@@ -45,7 +46,8 @@ def fetch_and_analyze(tv, asset_info, history_bars, interval):
         )
         
         if df is not None and not df.empty:
-            results_list = processor.analyze_asset(df)  # Returns list now
+            # Pass fixed_threshold to processor (None = use original dynamic logic)
+            results_list = processor.analyze_asset(df, fixed_threshold=fixed_threshold)
             
             # Use readable name if available (e.g., MOUTAI instead of 600519)
             display_name = asset_info.get('name', symbol)
@@ -273,7 +275,11 @@ def main():
             sys.stdout.flush()
             
             fetch_summary['total'] += 1
-            pattern_results = fetch_and_analyze(tv, asset, history, interval)
+            
+            # Check for fixed threshold override in config
+            fixed_thresh = settings.get('fixed_threshold', None)
+            
+            pattern_results = fetch_and_analyze(tv, asset, history, interval, fixed_thresh)
             
             # pattern_results is now a list (can be empty or have multiple items)
             if pattern_results:
