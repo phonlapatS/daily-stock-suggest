@@ -30,19 +30,19 @@ THAI_STOCKS = load_symbols("data/thai_set100.txt")
 NASDAQ_STOCKS = load_symbols("data/nasdaq_stocks.txt")
 
 CHINA_ADR_STOCKS = [
-    {'symbol': 'BABA', 'exchange': 'NYSE'},
-    {'symbol': 'JD', 'exchange': 'NASDAQ'},
-    {'symbol': 'PDD', 'exchange': 'NASDAQ'},
-    {'symbol': 'BIDU', 'exchange': 'NASDAQ'},
-    {'symbol': 'NIO', 'exchange': 'NYSE'},
-    {'symbol': 'XPEV', 'exchange': 'NYSE'},
-    {'symbol': 'LI', 'exchange': 'NASDAQ'},
-    {'symbol': 'BILI', 'exchange': 'NASDAQ'},
-    {'symbol': 'TCOM', 'exchange': 'NASDAQ'},
-    {'symbol': 'IQ', 'exchange': 'NASDAQ'},
-    {'symbol': 'ZTO', 'exchange': 'NYSE'},
-    {'symbol': 'BEKE', 'exchange': 'NYSE'},
-    {'symbol': 'TCEHY', 'exchange': 'OTC'}
+    {'symbol': 'BABA', 'exchange': 'NYSE', 'name': 'ALIBABA'},
+    {'symbol': 'JD', 'exchange': 'NASDAQ', 'name': 'JD-COM'},
+    {'symbol': 'PDD', 'exchange': 'NASDAQ', 'name': 'PINDUODUO'},
+    {'symbol': 'BIDU', 'exchange': 'NASDAQ', 'name': 'BAIDU'},
+    {'symbol': 'NIO', 'exchange': 'NYSE', 'name': 'NIO'},
+    {'symbol': 'XPEV', 'exchange': 'NYSE', 'name': 'XPENG'},
+    {'symbol': 'LI', 'exchange': 'NASDAQ', 'name': 'LI-AUTO'},
+    {'symbol': 'BILI', 'exchange': 'NASDAQ', 'name': 'BILIBILI'},
+    {'symbol': 'TCOM', 'exchange': 'NASDAQ', 'name': 'TRIP-COM'},
+    {'symbol': 'IQ', 'exchange': 'NASDAQ', 'name': 'IQIYI'},
+    {'symbol': 'ZTO', 'exchange': 'NYSE', 'name': 'ZTO-EXP'},
+    {'symbol': 'BEKE', 'exchange': 'NYSE', 'name': 'KE-HOLDINGS'},
+    {'symbol': 'TCEHY', 'exchange': 'OTC', 'name': 'TENCENT-ADR'}
 ]
 
 CHINA_ECONOMY_STOCKS = [

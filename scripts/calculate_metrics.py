@@ -44,14 +44,44 @@ def print_table(df, title, icon="✅"):
     if df.empty:
         print(f"{'No candidates found matching criteria.':^110}")
     else:
+        # Pre-process for Deduplication
+        # Logic: If 'Display Name' AND 'Stats' (Prob, AvgWin, AvgLoss, RR) are identical, merge them.
+        processed_data = []
+        seen_keys = {} # key -> index in processed_data
+        
         for _, row in df.iterrows():
-            # Resolve display name
             sym = row['symbol']
             display_name = SYMBOL_MAP.get(str(sym), str(sym))
-            country = row['Country'] if 'Country' in row else 'GL'
             
-            # Use lowercase 'symbol' because it comes from reset_index() on groupby key
-            print(f"{display_name:<15} {country:<4} {int(row['Signals']):>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}")
+            # Key definition: Name + Stats
+            stats_key = (
+                display_name,
+                row['Signals'], 
+                row['Prob%'], 
+                row['Avg_Win%'], 
+                row['Avg_Loss%'], 
+                row['RR_Ratio']
+            )
+            
+            country_code = row['Country'] if 'Country' in row else 'GL'
+            
+            if stats_key in seen_keys:
+                # Merge Country Code
+                idx = seen_keys[stats_key]
+                existing_country = processed_data[idx]['Country']
+                if country_code not in existing_country:
+                     processed_data[idx]['Country'] = f"{existing_country}, {country_code}"
+            else:
+                # Add new entry
+                entry = row.to_dict()
+                entry['display_name'] = display_name
+                entry['Country'] = country_code
+                processed_data.append(entry)
+                seen_keys[stats_key] = len(processed_data) - 1
+
+        # Print Processed Data
+        for row in processed_data:
+            print(f"{row['display_name']:<15} {row['Country']:<6} {int(row['Signals']):>6} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}")
         
     print("-" * 110)
     print(f"Count: {len(df)}")
