@@ -38,7 +38,7 @@ def print_table(df, title, icon="✅"):
     """
     print(f"\n{title}")
     print("=" * 110)
-    print(f"{'Symbol':<15} {'Ctry':<4} {'Signals':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}   {'Status'}")
+    print(f"{'Symbol':<15} {'Ctry':<4} {'Signals':>8} {'Prob%':>10} {'AvgWin%':>12} {'AvgLoss%':>12} {'RR':>8}")
     print("-" * 110)
     
     if df.empty:
@@ -51,7 +51,7 @@ def print_table(df, title, icon="✅"):
             country = row['Country'] if 'Country' in row else 'GL'
             
             # Use lowercase 'symbol' because it comes from reset_index() on groupby key
-            print(f"{display_name:<15} {country:<4} {int(row['Signals']):>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}   {icon} PASS")
+            print(f"{display_name:<15} {country:<4} {int(row['Signals']):>8} {row['Prob%']:>9.1f}% {row['Avg_Win%']:>11.2f}% {row['Avg_Loss%']:>11.2f}% {row['RR_Ratio']:>8.2f}")
         
     print("-" * 110)
     print(f"Count: {len(df)}")
@@ -108,10 +108,6 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         else:
             rr_ratio = 999.0 if avg_win > 0 else 0.0
             
-        # 4. Preliminary Classification (Strict)
-        is_pass = (pop > 60) and (rr_ratio > 2.0)
-        status = "PASS" if is_pass else "FAIL"
-        
         group_name = group['group'].iloc[0] if 'group' in group.columns else 'N/A'
         
         return pd.Series({
@@ -121,8 +117,7 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
             'Prob%': round(pop, 1),
             'Avg_Win%': round(avg_win, 2),
             'Avg_Loss%': round(avg_loss, 2),
-            'RR_Ratio': round(rr_ratio, 2),
-            'Status': status
+            'RR_Ratio': round(rr_ratio, 2)
         })
 
     # --- Step 2: Aggregation ---
