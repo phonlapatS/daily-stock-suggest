@@ -210,7 +210,7 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         (summary_df['RR_Ratio'] <= 1.1)
     ].sort_values(by=['RR_Ratio', 'Prob%'], ascending=[False, False])
     
-    print_table(inter_low_df, "📉 TABLE 4: INTERNATIONAL SENSITIVITY (Prob > 50% | 0.5 < RR <= 1.1)", icon="✅")
+    print_table(inter_low_df, "📉 TABLE 4: INTERNATIONAL MARKET DIRECTION (Prob > 50% | 0.5 < RR <= 1.1)", icon="✅")
 
     print(f"\n💾 Detailed report saved to: {output_path}")
 
