@@ -117,51 +117,55 @@ ASSET_GROUPS = {
         "fixed_threshold": 0.20  # Backtest: 53 trades, RR 1.42
     },
     "GROUP_E_CHINA_ADR": {
-        "description": "China ADRs (US Market)",
+        "description": "China ADRs (Alibaba, JD, Pinduoduo)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
-        "assets": CHINA_ADR_STOCKS + CHINA_ECONOMY_STOCKS,
-        "fixed_threshold": 0.6
+        "assets": [
+            {'symbol': 'BABA', 'exchange': 'NYSE', 'name': 'ALIBABA'},
+            {'symbol': 'JD', 'exchange': 'NASDAQ', 'name': 'JD-COM'},
+            {'symbol': 'PDD', 'exchange': 'NASDAQ', 'name': 'PINDUODUO'},
+            {'symbol': 'BIDU', 'exchange': 'NASDAQ', 'name': 'BAIDU'},
+            {'symbol': 'NIO', 'exchange': 'NYSE', 'name': 'NIO'}
+        ],
+        "fixed_threshold": 1.2  # Scaled for high volatility (Avg Daily Move ~1.8%)
     },
     "GROUP_F_CHINA_A": {
-        "description": "China A-Shares (Shanghai/Shenzhen)",
+        "description": "China A-Shares (Moutai, Ping An, CATL)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [
-            {'symbol': '600519', 'exchange': 'SSE', 'name': 'MOUTAI'},     # Kweichow Moutai
-            {'symbol': '601318', 'exchange': 'SSE', 'name': 'PINGAN'},     # Ping An Insurance
-            {'symbol': '000858', 'exchange': 'SZSE', 'name': 'WULIANG'},    # Wuliangye Yibin
-            {'symbol': '300750', 'exchange': 'SZSE', 'name': 'CATL'},       # CATL
-            {'symbol': '002594', 'exchange': 'SZSE', 'name': 'BYD-SZ'},     # BYD (SZ)
-            {'symbol': '600036', 'exchange': 'SSE', 'name': 'CM-BANK'},    # China Merchants Bank
+            {'symbol': '600519', 'exchange': 'SH', 'name': 'MOUTAI'},
+            {'symbol': '601318', 'exchange': 'SH', 'name': 'PINGAN'},
+            {'symbol': '000858', 'exchange': 'SZ', 'name': 'WULIANG'},
+            {'symbol': '300750', 'exchange': 'SZ', 'name': 'CATL'},
+            {'symbol': '002594', 'exchange': 'SZ', 'name': 'BYD-SZ'}
         ],
-        "fixed_threshold": 0.6
+        "fixed_threshold": 1.2  # Scaled for high volatility
     },
     "GROUP_G_HK_TECH": {
-        "description": "Hong Kong Tech (HKEX)",
+        "description": "Hong Kong Tech (Tencent, Meituan)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [
-            {'symbol': '700', 'exchange': 'HKEX', 'name': 'TENCENT'},      # Tencent
-            {'symbol': '9988', 'exchange': 'HKEX', 'name': 'ALIBABA'},     # Alibaba
-            {'symbol': '3690', 'exchange': 'HKEX', 'name': 'MEITUAN'},     # Meituan
-            {'symbol': '1810', 'exchange': 'HKEX', 'name': 'XIAOMI'},      # Xiaomi
-            {'symbol': '9618', 'exchange': 'HKEX', 'name': 'JD-COM'},      # JD.com
-            {'symbol': '1211', 'exchange': 'HKEX', 'name': 'BYD-HK'},      # BYD (HK)
+            {'symbol': '700', 'exchange': 'HK', 'name': 'TENCENT'},
+            {'symbol': '9988', 'exchange': 'HK', 'name': 'ALIBABA'},
+            {'symbol': '3690', 'exchange': 'HK', 'name': 'MEITUAN'},
+            {'symbol': '1810', 'exchange': 'HK', 'name': 'XIAOMI'},
+            {'symbol': '9618', 'exchange': 'HK', 'name': 'JD-COM'}
         ],
-        "fixed_threshold": 0.6
+        "fixed_threshold": 0.6  # Standard international threshold
     },
     "GROUP_H_TAIWAN": {
-        "description": "Taiwan Semiconductor (TWSE)",
+        "description": "Taiwan Stocks (TSMC, MediaTek)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [
-            {'symbol': '2330', 'exchange': 'TWSE', 'name': 'TSMC'},        # TSMC
-            {'symbol': '2454', 'exchange': 'TWSE', 'name': 'MEDIATEK'},    # MediaTek
-            {'symbol': '2317', 'exchange': 'TWSE', 'name': 'FOXCONN'},     # Hon Hai
-            {'symbol': '2308', 'exchange': 'TWSE', 'name': 'DELTA'},       # Delta Electronics
-            {'symbol': '2303', 'exchange': 'TWSE', 'name': 'UMC'},         # UMC
+            {'symbol': '2330', 'exchange': 'TWSE', 'name': 'TSMC'},
+            {'symbol': '2454', 'exchange': 'TWSE', 'name': 'MEDIATEK'},
+            {'symbol': '2317', 'exchange': 'TWSE', 'name': 'FOXCONN'},
+            {'symbol': '2308', 'exchange': 'TWSE', 'name': 'DELTA'},
+            {'symbol': '2303', 'exchange': 'TWSE', 'name': 'UMC'}
         ],
-        "fixed_threshold": 0.6
+        "fixed_threshold": 1.0  # OPTIMAL: High threshold filters noise effectively
     }
 }

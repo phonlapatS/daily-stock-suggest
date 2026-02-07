@@ -199,7 +199,8 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         (summary_df['RR_Ratio'] > 1.1)
     ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
     
-    print_table(inter_df, "🌍 TABLE 3: INTERNATIONAL OBSERVATION (Prob > 55% | RRR > 1.1)", icon="✅")
+    if not inter_df.empty:
+        print_table(inter_df, "🌍 TABLE 3: INTERNATIONAL OBSERVATION (Prob > 55% | RRR > 1.1)", icon="✅")
 
     # TABLE 4: INTERNATIONAL SENSITIVITY (Deep Dive)
     # Criteria: Prob > 50% (Lower for deep dive) AND 0.5 < RR <= 1.1

@@ -26,7 +26,7 @@ from tvDatafeed import TvDatafeed, Interval
 import config
 
 
-def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25, min_stats=30, verbose=True):
+def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25, min_stats=30, verbose=True, **kwargs):
     """
     Backtest หุ้นเดียว พร้อมแสดงช่วงวันที่
     
@@ -68,8 +68,11 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
             final_test_bars = n_bars # Use requested (e.g. 200)
             
             # Safety check: if requested is huge (e.g. --full 5000), adjust
+            # STRATEGY UPDATE: Ensure at least 50% data for Training
             if final_test_bars > total_bars * 0.5:
-                final_test_bars = int(total_bars * 0.2) # Cap at 20%
+                final_test_bars = int(total_bars * 0.5) 
+                if verbose:
+                    print(f"⚠️ Adjusted Test Bars to {final_test_bars} (Capped at 50% to ensure adequate training)")
         
         # Logic B: Limited History (220 - 1000 bars)
         # Use Proportional Split (80% Train / 20% Test)
@@ -100,11 +103,21 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
         close = df['close']
         pct_change = close.pct_change()
         
-        # Rolling volatility
-        short_std = pct_change.rolling(20).std()
-        long_std = pct_change.rolling(252).std()
-        effective_std = np.maximum(short_std, long_std.fillna(0) * 0.5)
-        threshold = effective_std * threshold_multiplier
+        # --- THRESHOLD LOGIC (Updated to support Fixed from Config) ---
+        if 'fixed_threshold' in kwargs and kwargs['fixed_threshold'] is not None:
+             # Fixed Mode
+             fixed_val = float(kwargs['fixed_threshold']) / 100.0
+             threshold = pd.Series(fixed_val, index=pct_change.index)
+             if verbose:
+                 print(f"   Mode: FIXED Threshold ({kwargs['fixed_threshold']}%)")
+        else:
+            # Dynamic Mode (Legacy)
+            short_std = pct_change.rolling(20).std()
+            long_std = pct_change.rolling(252).std()
+            effective_std = np.maximum(short_std, long_std.fillna(0) * 0.5)
+            threshold = effective_std * threshold_multiplier
+            if verbose:
+                 print(f"   Mode: DYNAMIC Threshold (Multiplier {threshold_multiplier}x)")
         
         # Convert to +/- pattern
         patterns = []
@@ -380,7 +393,8 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
             for attempt in range(max_retries):
                 try:
                     # Pass the current TV instance
-                    result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=True)
+                    fixed_thresh = group_config.get('fixed_threshold')
+                    result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=True, fixed_threshold=fixed_thresh)
                     break # Success
                 except Exception as e:
                     errMsg = str(e)
