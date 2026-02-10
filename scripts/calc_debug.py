@@ -191,29 +191,27 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
     
     print_table(thai_balanced, "🇹🇭 TABLE 2: THAI BALANCED (Prob > 60% | 1.5 < RRR <= 2.0)", icon="✅")
 
-    # TABLE 3: GLOBAL WINNERS (Positive Expectancy & Volatility)
-    # Criteria: Prob > 50% | RRR > 1.0 | Avg Win >= 1.0% (The "Investable Universe")
-    inter_winners = summary_df[
+    # TABLE 3: INTERNATIONAL MARKET (Observation)
+    # Criteria: Prob > 55% AND RR > 1.1 
+    inter_df = summary_df[
+        (~summary_df['Group'].str.contains('THAI', na=False)) & 
+        (summary_df['Prob%'] > 55.0) & 
+        (summary_df['RR_Ratio'] > 1.1)
+    ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
+    
+    if not inter_df.empty:
+        print_table(inter_df, "🌍 TABLE 3: INTERNATIONAL OBSERVATION (Prob > 55% | RRR > 1.1)", icon="✅")
+
+    # TABLE 4: INTERNATIONAL SENSITIVITY (Deep Dive)
+    # Criteria: Prob > 50% (Lower for deep dive) AND 0.5 < RR <= 1.1
+    inter_low_df = summary_df[
         (~summary_df['Group'].str.contains('THAI', na=False)) & 
         (summary_df['Prob%'] > 50.0) & 
         (summary_df['RR_Ratio'] > 1.0) &
-        (summary_df['Avg_Win%'] >= 1.0)
+        (summary_df['RR_Ratio'] <= 1.1)
     ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
     
-    print_table(inter_winners, "🌍 TABLE 3: GLOBAL WINNERS (Prob > 50% | RRR > 1.0 | Win >= 1%)", icon="✅")
-
-    # TABLE 4: GLOBAL WATCHLIST (Negative Expectancy / High Volatility)
-    # Criteria: Prob > 50% AND 0.5 < RR <= 1.0 (The "Draggers")
-    # Note: We keep "small win" stocks here too if they don't meet the win% requirement?
-    # Actually, RRR > 1.0 but Win < 1.0% should probably be in a separate list or just dropped.
-    inter_watchlist = summary_df[
-        (~summary_df['Group'].str.contains('THAI', na=False)) & 
-        (summary_df['Prob%'] > 50.0) & 
-        (summary_df['RR_Ratio'] > 0.5) &
-        (summary_df['RR_Ratio'] <= 1.0)
-    ].sort_values(by=['Prob%', 'Signals'], ascending=[False, False])
-    
-    print_table(inter_watchlist, "📉 TABLE 4: GLOBAL WATCHLIST (Prob > 50% | 0.5 < RRR <= 1.0)", icon="⚠️")
+    print_table(inter_low_df, "📉 TABLE 4: INTERNATIONAL MARKET DIRECTION (Prob > 50% | 0.5 < RRR <= 1.1)", icon="✅")
 
     print(f"\n💾 Detailed report saved to: {output_path}")
 

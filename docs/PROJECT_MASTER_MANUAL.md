@@ -27,12 +27,6 @@ The **Fractal N+1 Prediction System** is a statistical arbitrage tool designed t
 
 **Key Philosophy:** "History doesn't repeat itself, but it often rhymes."
 
-**Current Capabilities (V3.4):**
-- **Multi-Market:** Supports Thai Stocks (SET), US Tech (NASDAQ), China (A-Shares/ADR), and Precious Metals.
-- **Adaptive Logic:** Automatically finds the most effective pattern length (3 to 8 days) for each asset.
-- **Smart Caching:** Local OHLC caching to minimize API usage and maximize speed.
-- **Intraday Monitoring:** Real-time scanning for Gold/Silver on 15m/30m timeframes.
-
 ---
 
 ## 2. System Architecture

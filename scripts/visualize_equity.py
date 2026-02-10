@@ -51,8 +51,8 @@ def visualize_equity(trade_file='logs/trade_history.csv', output_file='data/equi
         final_ret = trades['equity'].iloc[-1]
         last_date = trades['date'].iloc[-1]
         
-        # STANDARD LINE STYLE (All Equal)
-        line_width = 2.0 
+        # STANDARD LINE STYLE (All Equal, Normal Width)
+        line_width = 1.5 
         alpha_val = 1.0
 
         # --- PLOT 1: Time-Based ---
@@ -76,10 +76,11 @@ def visualize_equity(trade_file='logs/trade_history.csv', output_file='data/equi
     ax1.axhline(0, color='black', linewidth=1, linestyle='--')
     ax1.grid(True, linestyle=':', alpha=0.6)
     ax1.legend(loc='upper left', fontsize=10)
+    ax1.xaxis.set_major_locator(mdates.YearLocator(1))
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
 
     # Format Plot 2 (Full)
-    ax2.set_title('View 2: Full Trade History Comparison', fontsize=14, fontweight='bold')
+    ax2.set_title('View 2: Statistical Edge Comparison (Full Trade History)', fontsize=14, fontweight='bold')
     ax2.set_ylabel('Gross Cumulative Return (%)', fontsize=12)
     ax2.set_xlabel('Trade Count (All Trades)', fontsize=12)
     ax2.axhline(0, color='black', linewidth=1, linestyle='--')
@@ -87,19 +88,19 @@ def visualize_equity(trade_file='logs/trade_history.csv', output_file='data/equi
     ax2.legend(loc='upper left', fontsize=10)
 
     # Format Plot 3 (Zoomed)
-    ax3.set_title('View 3: Detailed Accuracy Check (Zoomed to First 300 Trades)', fontsize=14, fontweight='bold')
+    ax3.set_title('View 3: Detailed Accuracy Check (Zoomed to First 200 Trades)', fontsize=14, fontweight='bold')
     ax3.set_ylabel('Gross Cumulative Return (%)', fontsize=12)
-    ax3.set_xlabel('Trade Count (0-300)', fontsize=12)
+    ax3.set_xlabel('Trade Count (0-200)', fontsize=12)
     ax3.axhline(0, color='black', linewidth=1, linestyle='--')
     ax3.grid(True, linestyle=':', alpha=0.6)
     ax3.legend(loc='upper left', fontsize=10)
     
-    # ZOOM LIMIT: Changed to 300 as requested
-    ax3.set_xlim(0, 300)
+    # ZOOM LIMIT: Changed to 200 per user request
+    ax3.set_xlim(0, 200)
     
     plt.tight_layout()
     plt.savefig(output_file)
-    print(f"✅ Saved Standard 300-Zoom Plot to: {output_file}")
+    print(f"✅ Saved Standard Normal-Line Plot to: {output_file}")
 
 if __name__ == "__main__":
     visualize_equity()

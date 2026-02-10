@@ -1,0 +1,92 @@
+{
+  "GROUP_A_THAI": {
+    "group": "GROUP_A_THAI",
+    "threshold": "Dynamic",
+    "assets_tested": 1,
+    "avg_trades": 4.0,
+    "avg_accuracy": 50.0,
+    "avg_rr": 1.3,
+    "avg_expectancy": 0.132,
+    "verdict": "PASS",
+    "tested_at": "2026-02-06T15:06:29.795833"
+  },
+  "GROUP_B_US": {
+    "group": "GROUP_B_US",
+    "threshold": 0.6,
+    "assets_tested": 5,
+    "avg_trades": 153.0,
+    "avg_accuracy": 50.0,
+    "avg_rr": 1.08,
+    "avg_expectancy": 0.025,
+    "verdict": "PASS",
+    "tested_at": "2026-02-06T15:10:52.235844"
+  },
+  "GROUP_C1_GOLD_30M": {
+    "group": "GROUP_C1_GOLD_30M",
+    "threshold": 0.1,
+    "assets_tested": 1,
+    "avg_trades": 278.0,
+    "avg_accuracy": 50.0,
+    "avg_rr": 1.2,
+    "avg_expectancy": 0.019,
+    "verdict": "PASS",
+    "tested_at": "2026-02-06T15:11:33.124043"
+  },
+  "GROUP_C2_GOLD_15M": {
+    "group": "GROUP_C2_GOLD_15M",
+    "threshold": 0.1,
+    "assets_tested": 1,
+    "avg_trades": 278.0,
+    "avg_accuracy": 50.0,
+    "avg_rr": 1.2,
+    "avg_expectancy": 0.019,
+    "verdict": "PASS",
+    "tested_at": "2026-02-06T15:12:13.919070"
+  },
+  "GROUP_D1_SILVER_30M": {
+    "group": "GROUP_D1_SILVER_30M",
+    "threshold": 0.15,
+    "assets_tested": 1,
+    "avg_trades": 342.0,
+    "avg_accuracy": 53.5,
+    "avg_rr": 0.85,
+    "avg_expectancy": -0.004,
+    "verdict": "FAIL",
+    "tested_at": "2026-02-06T15:13:23.783256"
+  },
+  "GROUP_D2_SILVER_15M": {
+    "group": "GROUP_D2_SILVER_15M",
+    "threshold": 0.2,
+    "assets_tested": 1,
+    "avg_trades": 222.0,
+    "avg_accuracy": 51.8,
+    "avg_rr": 0.86,
+    "avg_expectancy": -0.015,
+    "verdict": "FAIL",
+    "tested_at": "2026-02-06T15:14:14.231438"
+  },
+  "GROUP_E_CHINA_ADR": {
+    "group": "GROUP_E_CHINA_ADR",
+    "threshold": 1.2,
+    "assets_tested": 5,
+    "avg_trades": 168.0,
+    "avg_accuracy": 50.0,
+    "avg_rr": 1.14,
+    "avg_expectancy": 0.19,
+    "avg_bars": 2832,
+    "verdict": "PASS",
+    "tested_at": "2026-02-06T15:37:24.109413"
+  },
+  "GROUP_H_TAIWAN": {
+    "group": "GROUP_H_TAIWAN",
+    "threshold": "1.2",
+    "assets_tested": 5,
+    "avg_trades": 70.0,
+    "avg_accuracy": 45.0,
+    "avg_rr": 1.11,
+    "avg_expectancy": -0.066,
+    "avg_bars": 4960,
+    "verdict": "FAIL",
+    "tested_at": "2026-02-06T15:52:36.849033"
+  }
+}

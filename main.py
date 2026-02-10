@@ -320,8 +320,45 @@ def main():
         print("\n" + "=" * 50)
         print("📊 PERFORMANCE LOGGING")
         print("=" * 50)
-        verify_forecast(tv)  # Verify yesterday's forecasts
-        log_forecast(all_results)  # Log today's forecasts
+        
+        # New Logger Integration
+        from scripts.stock_logger import StockLogger
+        stock_logger = StockLogger()
+        
+        # Log High Confidence Signals
+        # We only log PENDING (OPEN) trades here.
+        # Closing trades is handled by the AUDITOR (verify_prediction.py or similar)
+        # But wait, main.py is the PREDICTOR. So it opens trades.
+        
+        for r in all_results:
+            # Re-apply filters to be safe (same as report)
+            if r['matches'] < 30: continue
+            
+            # Determine Signal
+            avg_ret = r['avg_return']
+            prob = r['bull_prob'] if avg_ret > 0 else r['bear_prob']
+            
+            # Only log if Probability is high enough?
+            # Let's say Prob > 60% as a baseline for logging to "Watchlist"
+            if prob > 60:
+                signal = "UP" if avg_ret > 0 else "DOWN"
+                
+                # Log to Individual Stock File (Spreadsheet Style)
+                # Note: valid_since is the timestamp of the signal (usually today/yesterday close)
+                # We use that as Entry Date.
+                
+                # Check if we should log based on "New Signal" logic?
+                # For now, just log it. The logger handles "If OPEN exists, skip".
+                # This prevents duplicate entries for the same ongoing signal.
+                
+                stock_logger.log_trade(
+                    symbol=r['symbol'], 
+                    signal=signal, 
+                    entry_price=r['price']
+                )
+
+        # verify_forecast(tv)  # Verify yesterday's forecasts (Legacy - to be replaced by Auditor)
+        # log_forecast(all_results)  # Log today's forecasts (Legacy - kept for safety until full transition)
     else:
         print("\n❌ No matching patterns found in any asset.")
     
