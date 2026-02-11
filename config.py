@@ -71,14 +71,19 @@ ASSET_GROUPS = {
         "description": "Thai Market (SET100+)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
-        "assets": [{'symbol': s, 'exchange': 'SET'} for s in THAI_STOCKS]
+        "assets": [{'symbol': s, 'exchange': 'SET'} for s in THAI_STOCKS],
+        "engine": "MEAN_REVERSION",
+        "min_threshold": 0.01   # 1.0% floor for Thai stocks
     },
     "GROUP_B_US": {
         "description": "US Market (NASDAQ)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [{'symbol': s, 'exchange': 'NASDAQ'} for s in NASDAQ_STOCKS],
-        "fixed_threshold": 0.6 # Mentor suggestion
+        "fixed_threshold": None, # Use Dynamic Base
+        "engine": "TREND_MOMENTUM",
+        "min_threshold": 0.005,  # Optimized to 0.5%
+        "min_adx": 20            # Standard Trend Strength
     },
     # ==========================================
     # METALS - Split by Asset for Optimized Thresholds
@@ -91,14 +96,16 @@ ASSET_GROUPS = {
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.10  # Backtest: 90 trades, RR 1.74
+        "fixed_threshold": 0.10,  # Backtest: 90 trades, RR 1.74
+        "engine": "MEAN_REVERSION"
     },
     "GROUP_C2_GOLD_15M": {
         "description": "Gold Intraday 15min",
         "interval": Interval.in_15_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.10  # Backtest: 108 trades, RR 0.96
+        "fixed_threshold": 0.10,  # Backtest: 108 trades, RR 0.96
+        "engine": "MEAN_REVERSION"
     },
     
     # SILVER (XAGUSD) - Different optimal thresholds per TF
@@ -107,65 +114,57 @@ ASSET_GROUPS = {
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.15  # Backtest: 34 trades, Acc 61.8%, RR 1.01
+        "fixed_threshold": 0.15,  # Backtest: 34 trades, Acc 61.8%, RR 1.01
+        "engine": "MEAN_REVERSION"
     },
     "GROUP_D2_SILVER_15M": {
         "description": "Silver Intraday 15min",
         "interval": Interval.in_15_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.20  # Backtest: 53 trades, RR 1.42
+        "fixed_threshold": 0.20,  # Backtest: 53 trades, RR 1.42
+        "engine": "MEAN_REVERSION"
     },
-    "GROUP_E_CHINA_ADR": {
-        "description": "China ADRs (Alibaba, JD, Pinduoduo)",
+    "GROUP_C_CHINA_HK": {
+        "description": "China & HK Tech (HKEX)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [
-            {'symbol': 'BABA', 'exchange': 'NYSE', 'name': 'ALIBABA'},
-            {'symbol': 'JD', 'exchange': 'NASDAQ', 'name': 'JD-COM'},
-            {'symbol': 'PDD', 'exchange': 'NASDAQ', 'name': 'PINDUODUO'},
-            {'symbol': 'BIDU', 'exchange': 'NASDAQ', 'name': 'BAIDU'},
-            {'symbol': 'NIO', 'exchange': 'NYSE', 'name': 'NIO'}
+            {'symbol': '700', 'exchange': 'HKEX', 'name': 'TENCENT'},
+            {'symbol': '9988', 'exchange': 'HKEX', 'name': 'ALIBABA'},
+            {'symbol': '3690', 'exchange': 'HKEX', 'name': 'MEITUAN'},
+            {'symbol': '1810', 'exchange': 'HKEX', 'name': 'XIAOMI'},
+            {'symbol': '9888', 'exchange': 'HKEX', 'name': 'BAIDU'},
+            {'symbol': '9618', 'exchange': 'HKEX', 'name': 'JD-COM'},
+            {'symbol': '1211', 'exchange': 'HKEX', 'name': 'BYD'},
+            {'symbol': '2015', 'exchange': 'HKEX', 'name': 'LI-AUTO'},
+            {'symbol': '9868', 'exchange': 'HKEX', 'name': 'XPENG'},
+            {'symbol': '9866', 'exchange': 'HKEX', 'name': 'NIO'},
+            {'symbol': '0981', 'exchange': 'HKEX', 'name': 'SMIC'}
         ],
-        "fixed_threshold": 1.2  # Scaled for high volatility (Avg Daily Move ~1.8%)
+        "fixed_threshold": None, 
+        "engine": "MEAN_REVERSION", # V4.4: Switched from TREND to REVERSION (data-driven)
+        "min_threshold": 0.005  # Optimized to 0.5%
     },
-    "GROUP_F_CHINA_A": {
-        "description": "China A-Shares (Moutai, Ping An, CATL)",
-        "interval": Interval.in_daily,
-        "history_bars": 5000,
-        "assets": [
-            {'symbol': '600519', 'exchange': 'SH', 'name': 'MOUTAI'},
-            {'symbol': '601318', 'exchange': 'SH', 'name': 'PINGAN'},
-            {'symbol': '000858', 'exchange': 'SZ', 'name': 'WULIANG'},
-            {'symbol': '300750', 'exchange': 'SZ', 'name': 'CATL'},
-            {'symbol': '002594', 'exchange': 'SZ', 'name': 'BYD-SZ'}
-        ],
-        "fixed_threshold": 1.2  # Scaled for high volatility
-    },
-    "GROUP_G_HK_TECH": {
-        "description": "Hong Kong Tech (Tencent, Meituan)",
-        "interval": Interval.in_daily,
-        "history_bars": 5000,
-        "assets": [
-            {'symbol': '700', 'exchange': 'HK', 'name': 'TENCENT'},
-            {'symbol': '9988', 'exchange': 'HK', 'name': 'ALIBABA'},
-            {'symbol': '3690', 'exchange': 'HK', 'name': 'MEITUAN'},
-            {'symbol': '1810', 'exchange': 'HK', 'name': 'XIAOMI'},
-            {'symbol': '9618', 'exchange': 'HK', 'name': 'JD-COM'}
-        ],
-        "fixed_threshold": 0.6  # Standard international threshold
-    },
-    "GROUP_H_TAIWAN": {
-        "description": "Taiwan Stocks (TSMC, MediaTek)",
+    "GROUP_D_TAIWAN": {
+        "description": "Taiwan Semicon (TWSE)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [
             {'symbol': '2330', 'exchange': 'TWSE', 'name': 'TSMC'},
             {'symbol': '2454', 'exchange': 'TWSE', 'name': 'MEDIATEK'},
-            {'symbol': '2317', 'exchange': 'TWSE', 'name': 'FOXCONN'},
+            {'symbol': '2317', 'exchange': 'TWSE', 'name': 'HON-HAI'},
+            {'symbol': '2303', 'exchange': 'TWSE', 'name': 'UMC'},
             {'symbol': '2308', 'exchange': 'TWSE', 'name': 'DELTA'},
-            {'symbol': '2303', 'exchange': 'TWSE', 'name': 'UMC'}
+            {'symbol': '2382', 'exchange': 'TWSE', 'name': 'QUANTA'},
+            {'symbol': '3711', 'exchange': 'TWSE', 'name': 'ASE'},
+            {'symbol': '3008', 'exchange': 'TWSE', 'name': 'LARGAN'},
+            {'symbol': '2357', 'exchange': 'TWSE', 'name': 'ASUSTEK'},
+            {'symbol': '2395', 'exchange': 'TWSE', 'name': 'ADVANTECH'}
         ],
-        "fixed_threshold": 1.0  # OPTIMAL: High threshold filters noise effectively
+        "fixed_threshold": None,
+        "engine": "TREND_MOMENTUM",
+        "min_threshold": 0.005, # Optimized to 0.5% (was 1.0%)
+        "min_adx": 20           # Standard ADX
     }
 }

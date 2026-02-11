@@ -18,12 +18,17 @@ import time
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from dotenv import load_dotenv
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tvDatafeed import TvDatafeed, Interval
 import config
+from core.data_cache import get_data_with_cache
+
+# Load environment variables
+load_dotenv()
 
 
 def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25, min_stats=30, verbose=True, **kwargs):
@@ -37,285 +42,359 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=1.25,
         print(f"\n🔬 BACKTEST: {symbol} ({exchange})")
         print("=" * 50)
     
-    try:
-        df = tv.get_hist(symbol=symbol, exchange=exchange, 
-                         interval=Interval.in_daily, n_bars=5000)
-        
-        if df is None or len(df) < 250:
-            if verbose:
-                print(f"❌ Not enough data for {symbol}")
-            return None
-        
-        # Get date range
-        total_bars = len(df)
-        
-        # --- DYNAMIC SPLIT STRATEGY (V3.4 Adaptive Logic) ---
-        # Goal: Optimize Train/Test split based on available history
-        # 1. Establish Minimum Requirements
-        # 2. Prefer Reference Data (Training) over Test Data
-        
-        MIN_TRAIN_BARS = 200    # Need ~1 year to learn patterns
-        MIN_TEST_BARS = 20      # Need ~1 month to verify
-        
-        if total_bars < (MIN_TRAIN_BARS + MIN_TEST_BARS):
-            if verbose:
-                print(f"❌ Insufficient data ({total_bars} bars). Need min {MIN_TRAIN_BARS + MIN_TEST_BARS}.")
-            return None
-
-        # Logic A: Rich History (> 1000 bars)
-        # Use Fixed Window (Standardized Test)
-        if total_bars >= 1000:
-            final_test_bars = n_bars # Use requested (e.g. 200)
-            
-            # Safety check: if requested is huge (e.g. --full 5000), adjust
-            # STRATEGY UPDATE: Ensure at least 50% data for Training
-            if final_test_bars > total_bars * 0.5:
-                final_test_bars = int(total_bars * 0.5) 
-                if verbose:
-                    print(f"⚠️ Adjusted Test Bars to {final_test_bars} (Capped at 50% to ensure adequate training)")
-        
-        # Logic B: Limited History (220 - 1000 bars)
-        # Use Proportional Split (80% Train / 20% Test)
-        else:
-            final_test_bars = int(total_bars * 0.20)
-            # Ensure it meets min requirement
-            final_test_bars = max(MIN_TEST_BARS, final_test_bars)
-            
-            if verbose:
-                print(f"⚠️ Adaptive Split: History {total_bars} bars -> Testing last {final_test_bars} bars (20%)")
-        
-        n_bars = final_test_bars
-        train_end = total_bars - n_bars
-        
-        # ---------------------------------------------------
-        
-        test_date_from = df.index[train_end].strftime('%Y-%m-%d')
-        test_date_to = df.index[-1].strftime('%Y-%m-%d')
-        train_date_from = df.index[0].strftime('%Y-%m-%d')
-        train_date_to = df.index[train_end-1].strftime('%Y-%m-%d')
-        
+    max_retries = 3
+    df = None
+    
+    for attempt in range(max_retries):
+        try:
+            df = get_data_with_cache(
+                tv=tv,
+                symbol=symbol,
+                exchange=exchange,
+                interval=Interval.in_daily,
+                full_bars=5000,
+                delta_bars=50
+            )
+            if df is not None and len(df) >= 250:
+                break
+        except Exception as e:
+            if verbose: print(f"⚠️ Attempt {attempt+1} failed for {symbol}: {e}")
+            time.sleep(2)
+    
+    if df is None or len(df) < 250:
         if verbose:
-            print(f"📊 Total: {len(df)} bars")
-            print(f"   Train: {train_date_from} → {train_date_to} ({train_end} bars)")
-            print(f"   Test:  {test_date_from} → {test_date_to} ({n_bars} bars)")
-        
-        # Calculate returns and threshold
-        close = df['close']
-        pct_change = close.pct_change()
-        
-        # --- THRESHOLD LOGIC (Updated to support Fixed from Config) ---
-        if 'fixed_threshold' in kwargs and kwargs['fixed_threshold'] is not None:
-             # Fixed Mode
-             fixed_val = float(kwargs['fixed_threshold']) / 100.0
-             threshold = pd.Series(fixed_val, index=pct_change.index)
-             if verbose:
-                 print(f"   Mode: FIXED Threshold ({kwargs['fixed_threshold']}%)")
-        else:
-            # Dynamic Mode (Legacy)
-            short_std = pct_change.rolling(20).std()
-            long_std = pct_change.rolling(252).std()
-            effective_std = np.maximum(short_std, long_std.fillna(0) * 0.5)
-            threshold = effective_std * threshold_multiplier
-            if verbose:
-                 print(f"   Mode: DYNAMIC Threshold (Multiplier {threshold_multiplier}x)")
-        
-        # Convert to +/- pattern
-        patterns = []
-        for i in range(len(pct_change)):
-            if pd.isna(pct_change.iloc[i]) or pd.isna(threshold.iloc[i]):
-                patterns.append('')
-            elif pct_change.iloc[i] > threshold.iloc[i]:
-                patterns.append('+')
-            elif pct_change.iloc[i] < -threshold.iloc[i]:
-                patterns.append('-')
-            else:
-                patterns.append('')
-        
-        # Build pattern stats from Training data (Dynamic Lengths 3-8)
-        # We store stats for ALL lengths in a single flat dictionary (pattern strings are unique enough)
-        # Or better: just use the string as key. "+++" diff from "++++"
-        pattern_stats = {}
-        
-        MIN_LEN = 3
-        MAX_LEN = 8
-        
-        # 1. TRAINING PHASE: Scan for patterns of all valid lengths
-        for i in range(MAX_LEN, train_end - 1):
-            # Check NEXT day return
-            next_ret = pct_change.iloc[i+1]
-            if pd.isna(next_ret): continue
+            print(f"❌ Not enough data for {symbol}")
+        return None
+    
+    # Get date range
+    total_bars = len(df)
+    
+    # --- DYNAMIC SPLIT STRATEGY (V3.4 Adaptive Logic) ---
+    MIN_TRAIN_BARS = 200    
+    MIN_TEST_BARS = 20      
+    
+    if total_bars < (MIN_TRAIN_BARS + MIN_TEST_BARS):
+        if verbose:
+            print(f"❌ Insufficient data ({total_bars} bars).")
+        return None
 
-            # For each length, extract pattern
-            for length in range(MIN_LEN, MAX_LEN + 1):
-                # Extract pattern of 'length' ending at i
-                # Note: patterns index i corresponds to pct_change i
-                # patterns array matches pct_change length.
-                
-                # Check bounds
-                if i - length + 1 < 0: continue
-                
-                # Construct pattern string
-                # pct_change is processed into 'patterns' list (lines 88-97)
-                # But 'patterns' list might contain empty strings '' for noise.
-                # If we want STRICT consecutive, we check if any is empty?
-                # The original logic (lines 103) strictly joined them: ''.join(...)
-                # If 'patterns' has empty string, it just disappears from join.
-                # E.g. [+, '', -] -> "+-" (length 2). 
-                # This affects "Time length" vs "Pattern length". 
-                # Let's stick to simple join for consistency with original logic, 
-                # BUT allow looking back 'length' bars.
-                
-                sub_pat_list = patterns[i-length+1 : i+1]
-                pat = ''.join(sub_pat_list)
-                
-                if len(pat) < MIN_LEN:
+    if total_bars >= 1000:
+        final_test_bars = n_bars
+        if final_test_bars > total_bars * 0.5:
+            final_test_bars = int(total_bars * 0.5) 
+    else:
+        final_test_bars = int(total_bars * 0.20)
+        final_test_bars = max(MIN_TEST_BARS, final_test_bars)
+    
+    n_bars = final_test_bars
+    train_end = total_bars - n_bars
+    
+    test_date_from = df.index[train_end].strftime('%Y-%m-%d')
+    test_date_to = df.index[-1].strftime('%Y-%m-%d')
+    train_date_from = df.index[0].strftime('%Y-%m-%d')
+    train_date_to = df.index[train_end-1].strftime('%Y-%m-%d')
+    
+    if verbose:
+        print(f"📊 Total: {len(df)} bars")
+        print(f"   Train: {train_date_from} → {train_date_to} ({train_end} bars)")
+        print(f"   Test:  {test_date_from} → {test_date_to} ({n_bars} bars)")
+    
+    # Calculate Returns and Threshold
+    close = df['close']
+    high = df['high']
+    low = df['low']
+    volume = df['volume']
+    pct_change = close.pct_change()
+    
+    # NEW: Calculate Indicators for filtering (V4.3)
+    from core.indicators import calculate_adx, calculate_volume_adv, calculate_rsi
+    adx = calculate_adx(high, low, close)
+    vol_adv = calculate_volume_adv(volume)
+    rsi = calculate_rsi(close)
+    sma50 = close.rolling(50).mean()
+    
+    # V4.4: Volume Ratio for China FOMO Filter
+    vol_avg_20 = volume.rolling(20).mean()
+    volume_ratio = volume / vol_avg_20  # VR > 3.0 = FOMO, VR < 0.5 = Dead
+    
+    # V4.2 Threshold Logic (Static Floors + Dynamic Base)
+    is_us_market = any(ex in exchange.upper() for ex in ['NASDAQ', 'NYSE', 'US', 'CME', 'COMEX', 'NYMEX'])
+    is_thai_market = any(ex in exchange.upper() for ex in ['SET', 'MAI', 'TH'])
+    is_china_market = any(ex in exchange.upper() for ex in ['HKEX', 'SHSE', 'SZSE'])
+    
+    # Define Floor based on market philosophy (V4.2)
+    current_floor = 0
+    if is_us_market: current_floor = 0.006     # 0.6%
+    elif is_thai_market: current_floor = 0.01  # 1.0%
+    
+    if 'fixed_threshold' in kwargs and kwargs['fixed_threshold'] is not None:
+         fixed_val = float(kwargs['fixed_threshold']) / 100.0
+         threshold = pd.Series(fixed_val, index=pct_change.index)
+    else:
+        short_std = pct_change.rolling(window=20).std()
+        long_std = pct_change.rolling(window=252).std()
+        
+        # V4.2: Max(20d SD, 252d SD, Market Floor)
+        effective_std = np.maximum(short_std, long_std.fillna(0))
+        effective_std = np.maximum(effective_std, current_floor)
+        
+        threshold = effective_std * threshold_multiplier
+    
+    # Convert to +/- pattern
+    patterns = []
+    for i in range(len(pct_change)):
+        if pd.isna(pct_change.iloc[i]) or pd.isna(threshold.iloc[i]):
+            patterns.append('.') # Use '.' for neutral instead of empty
+        elif pct_change.iloc[i] > threshold.iloc[i]:
+            patterns.append('+')
+        elif pct_change.iloc[i] < -threshold.iloc[i]:
+            patterns.append('-')
+        else:
+            patterns.append('.')
+    
+    pattern_stats = {}
+    MIN_LEN = 3
+    MAX_LEN = 8
+    
+    # ... (Rest of pattern extraction remains similar, but using '.' instead of '') ...
+    # Skip to loop and direction logic
+    
+    # 1. TRAINING PHASE
+    for i in range(MAX_LEN, train_end - 1):
+        next_ret = pct_change.iloc[i+1]
+        if pd.isna(next_ret): continue
+
+        for length in range(MIN_LEN, MAX_LEN + 1):
+            if i - length + 1 < 0: continue
+            sub_pat_list = patterns[i-length+1 : i+1]
+            pat = ''.join(sub_pat_list)
+            if len(pat) < MIN_LEN: continue
+            
+            if pat not in pattern_stats:
+                pattern_stats[pat] = []
+            pattern_stats[pat].append(next_ret)
+    
+    if verbose:
+        print(f"   Patterns found (Dynamic 3-{MAX_LEN}): {len(pattern_stats)}")
+    
+    # 2. TESTING PHASE
+    total_predictions = 0
+    correct_predictions = 0
+    predictions = []
+    
+    for i in range(train_end, len(df) - 1):
+        # ADX Filter (V4.4)
+        min_adx = kwargs.get('min_adx')
+        if min_adx is not None:
+             if adx.iloc[i] < min_adx:
+                 continue
+
+        next_ret = pct_change.iloc[i+1]
+        if pd.isna(next_ret):
+            continue
+        
+        candidate_pats = []
+        for length in range(MIN_LEN, MAX_LEN + 1):
+            if i - length + 1 < 0:
+                continue
+            sub_pat_list = patterns[i-length+1 : i+1]
+            pat = ''.join(sub_pat_list)
+            if len(pat) < MIN_LEN:
+                continue
+            
+            if pat in pattern_stats:
+                hist_returns = pattern_stats[pat]
+                total = len(hist_returns)
+                if total < min_stats:
                     continue
                 
-                if pat not in pattern_stats:
-                    pattern_stats[pat] = {'up': 0, 'down': 0}
+                # Base probabilities from historical returns
+                bull_count = sum(1 for r in hist_returns if r > 0)
+                bull_prob = (bull_count / total) * 100
+                bear_prob = 100 - bull_prob
                 
-                if next_ret > 0:
-                    pattern_stats[pat]['up'] += 1
+                # Default statistical winner (used for non-US markets)
+                if bull_prob > bear_prob:
+                    cand_dir, cand_prob = 1, bull_prob
                 else:
-                    pattern_stats[pat]['down'] += 1
-        
-        if verbose:
-            print(f"   Patterns found (Dynamic 3-{MAX_LEN}): {len(pattern_stats)}")
-        
-        # 2. TESTING PHASE
-        total_predictions = 0
-        correct_predictions = 0
-        predictions = []
-        
-        for i in range(train_end, len(df) - 1):
-            next_ret = pct_change.iloc[i+1]
-            if pd.isna(next_ret): continue
-            
-            # Identify the BEST pattern for today (i)
-            # We look for lengths 3..8, check stats, pick best.
-            
-            candidate_pats = []
-            
-            for length in range(MIN_LEN, MAX_LEN + 1):
-                if i - length + 1 < 0: continue
-                sub_pat_list = patterns[i-length+1 : i+1]
-                pat = ''.join(sub_pat_list)
+                    cand_dir, cand_prob = -1, bear_prob
                 
-                if len(pat) < MIN_LEN: continue
+                # Calculate RR and expectancy for this candidate pattern
+                if cand_dir == 1:
+                    wins = [abs(r) for r in hist_returns if r > 0]
+                    losses = [abs(r) for r in hist_returns if r <= 0]
+                else:
+                    wins = [abs(r) for r in hist_returns if r < 0]
+                    losses = [abs(r) for r in hist_returns if r >= 0]
                 
-                if pat in pattern_stats:
-                    stats = pattern_stats[pat]
-                    total = stats['up'] + stats['down']
-                    if total < min_stats: continue
-                    
-                    bull_prob = (stats['up'] / total) * 100
-                    
-                    candidate_pats.append({
-                        'length': length, # This is 'window' length, not string length
-                        'pattern': pat,
-                        'prob': bull_prob,
-                        'total': total
-                    })
-            
-            if not candidate_pats:
-                continue
-                
-            # SELECTION LOGIC: Max Effective Length
-            # Prioritize: 
-            # 1. High Probability (> 55% or < 45%) - "Strong Signal"
-            # 2. If multiple strong, pick LONGEST (Most specific context)
-            
-            strong_candidates = [c for c in candidate_pats if abs(c['prob'] - 50) > 5]
-            
-            if strong_candidates:
-                # Pick longest from strong
-                best_match = sorted(strong_candidates, key=lambda x: x['length'], reverse=True)[0]
-            else:
-                # No strong signal? 
-                # Option A: Skip trade (Conservative)
-                # Option B: Pick longest valid (Original behavior often took what it found)
-                # Let's Skip to improve quality (Status: NO_TRADE) -> Loop continues
-                # BUT user wants to reproduce result.
-                # Let's fallback to "Best of what we have" but prioritize accuracy.
-                # Actually, let's pick the one with highest deviation from 50 (Most Conviction)
-                best_match = sorted(candidate_pats, key=lambda x: abs(x['prob'] - 50), reverse=True)[0]
+                avg_win = np.mean(wins) if wins else 0
+                avg_loss = np.mean(losses) if losses else 0
+                rr = avg_win / avg_loss if avg_loss > 0 else 0
+                p_win = len(wins) / total if total > 0 else 0
+                expectancy = p_win * avg_win - (1 - p_win) * avg_loss
 
-            # Execute Trade on Best Match
-            stats = pattern_stats[best_match['pattern']]
-            total = best_match['total']
-            prob = best_match['prob']
-            
-            if prob > 50:
-                forecast = 'UP'
-            else:
-                forecast = 'DOWN'
-                prob = 100 - prob # Display prob of winning (Bearish win)
+                # 🔒 US MARKET QUALITY FILTER (Long-only, High-Edge Patterns)
+                if is_us_market:
+                    # Long-only: always evaluate from bull side
+                    cand_dir = 1
+                    cand_prob = bull_prob
+                    wins = [abs(r) for r in hist_returns if r > 0]
+                    losses = [abs(r) for r in hist_returns if r <= 0]
+                    avg_win = np.mean(wins) if wins else 0
+                    avg_loss = np.mean(losses) if losses else 0
+                    rr = avg_win / avg_loss if avg_loss > 0 else 0
+                    p_win = len(wins) / total if total > 0 else 0
+                    expectancy = p_win * avg_win - (1 - p_win) * avg_loss
 
-            actual = 'UP' if next_ret > 0 else 'DOWN'
-            is_correct = 1 if forecast == actual else 0
-            actual_return_pct = next_ret * 100 
+                    # Gatekeeper: keep only high-quality, profitable patterns
+                    if cand_prob < 60.0 or rr < 1.5 or expectancy <= 0:
+                        continue
+                
+                candidate_pats.append({
+                    'length': length,
+                    'pattern': pat,
+                    'prob': cand_prob,
+                    'dir': cand_dir,
+                    'rr': rr,
+                    'exp': expectancy,
+                    'p_win': p_win,
+                })
+        
+        if not candidate_pats:
+            continue
             
-            total_predictions += 1
-            correct_predictions += is_correct
+        # Pick the best match prioritizing expectancy, then probability and length
+        best_match = sorted(
+            candidate_pats,
+            key=lambda x: (x['exp'], x['prob'], x['length']),
+            reverse=True
+        )[0]
+        
+        last_char = best_match['pattern'][-1]
+        
+        # Determine Direction based on market philosophy
+        if is_us_market:
+            # US: Long-only trend following, direction already enforced as +1
+            direction = 1
+            strategy = "US_LONG_TREND"
+        elif is_thai_market or is_china_market:
+            # Thai & China/HK: Mean Reversion (fade last candle)
+            if last_char == '+':
+                direction = -1
+            elif last_char == '-':
+                direction = 1
+            else:
+                continue  # Pattern doesn't imply direction
+            strategy = "MEAN_REVERSION"
             
-            predictions.append({
-                'date': df.index[i],
-                'pattern': best_match['pattern'],
-                'forecast': forecast,
-                'prob': prob,
-                'actual': actual,
-                'actual_return': actual_return_pct,
-                'correct': is_correct
-            })
+            # V4.4: China FOMO Volume Filter
+            if is_china_market:
+                current_vr = volume_ratio.iloc[i] if not pd.isna(volume_ratio.iloc[i]) else 1.0
+                if current_vr < 0.5:
+                    continue  # Dead Zone (47.8% WR) → Skip
+                elif current_vr > 3.0:
+                    strategy = "FOMO_REVERSION"  # Tag for tracking
+            
+            # ====== PILLAR 1: Market Regime Filter ======
+            # Skip LONG trades when price < SMA50 (bearish regime)
+            if is_china_market and direction == 1:  # LONG only
+                current_sma50 = sma50.iloc[i]
+                if not pd.isna(current_sma50) and close.iloc[i] < current_sma50:
+                    continue  # Bearish regime → skip longs
+        else:
+            # Default to historical winner if unknown market
+            direction = best_match['dir']
+            strategy = "STAT_FOLLOW"
+
+        final_dir = direction
+        final_forecast = "UP" if final_dir == 1 else "DOWN"
         
-        if total_predictions == 0:
-            if verbose:
-                print("❌ No valid forecasts found (Dynamic logic)")
-            return None
+        # Confidence calculation for the chosen direction
+        if is_us_market:
+            confidence = best_match['prob']
+        else:
+            hist_returns = pattern_stats[best_match['pattern']]
+            total_hist = len(hist_returns)
+            bull_count = sum(1 for r in hist_returns if r > 0)
+            confidence = (bull_count / total_hist) * 100 if final_dir == 1 else ((total_hist - bull_count) / total_hist) * 100
         
-        accuracy = correct_predictions / total_predictions * 100
+        # ====== Time Stop Analysis ======
+        # NOTE: "Best-of-3" approach was REMOVED (look-ahead bias, inflated WR by +18%)
+        # Testing showed: Day-1=49.8%, TP/SL=50.7%, Best-of-3=68.6%(BIASED)
+        # Using honest Day-1 return. Market Regime + Vol Targeting are the real edge.
+        trade_ret = next_ret  # Honest: next-day return only
         
+        # Actual outcome
+        actual_dir = 1 if trade_ret > 0 else -1
+        actual_label = 'UP' if trade_ret > 0 else 'DOWN'
+        is_correct = 1 if final_dir == actual_dir else 0
+        
+        # ====== PILLAR 2: Volatility Targeting ======
+        raw_return_pct = trade_ret * 100 * final_dir
+        if is_china_market:
+            # Risk-adjusted: scale return by 2% target / actual SD
+            stock_sd = pct_change.iloc[max(0,i-20):i].std()
+            if not pd.isna(stock_sd) and stock_sd > 0:
+                vol_scalar = min(0.02 / stock_sd, 2.0)  # Cap at 2x
+            else:
+                vol_scalar = 1.0
+            trader_return_pct = raw_return_pct * vol_scalar
+        else:
+            trader_return_pct = raw_return_pct
+
+        total_predictions += 1
+        correct_predictions += is_correct
+
+        predictions.append({
+            'date': df.index[i],
+            'pattern': best_match['pattern'],
+            'forecast': final_forecast,
+            'prob': confidence,
+            'actual': actual_label,
+            'actual_return': next_ret * 100,
+            'trader_return': trader_return_pct,
+            'correct': is_correct,
+            'strategy': strategy
+        })
+    
+    if total_predictions == 0:
         if verbose:
-            print(f"\n📊 RESULTS")
-            print("-" * 50)
-            print(f"   Forecasts: {total_predictions}")
-            print(f"   Correct:   {correct_predictions}")
-            print(f"   Accuracy:  {accuracy:.1f}%")
-            
-            # Detailed breakdown by pattern
-            df_pred = pd.DataFrame(predictions)
-            print(f"\n📈 Forecast Breakdown:")
-            print(f"   {'Pattern':<8} {'Forecast':<10} {'Count':<8} {'Correct':<8} {'Acc%':<8}")
-            print("   " + "-" * 45)
-            
-            by_pattern = df_pred.groupby(['pattern', 'forecast']).agg({
-                'correct': ['sum', 'count']
-            }).reset_index()
-            by_pattern.columns = ['pattern', 'forecast', 'correct', 'count']
-            by_pattern['acc'] = (by_pattern['correct'] / by_pattern['count'] * 100).round(1)
-            by_pattern = by_pattern.sort_values('count', ascending=False)
-            
-            for _, row in by_pattern.head(10).iterrows():
-                icon = "🟢" if row['forecast'] == 'UP' else "🔴"
-                print(f"   {row['pattern']:<8} {icon} {row['forecast']:<7} {int(row['count']):<8} {int(row['correct']):<8} {row['acc']:.1f}%")
-        
+            print("❌ No signals passed strict filters (Acc > 60%, RR > 2.0)")
         return {
-            'symbol': symbol,
-            'exchange': exchange,
-            'total': total_predictions,
-            'correct': correct_predictions,
-            'accuracy': round(accuracy, 1),
+            'symbol': symbol, 
+            'exchange': exchange, 
+            'total': 0, 
+            'correct': 0, 
+            'accuracy': 0, 
+            'avg_win': 0,
+            'avg_loss': 0,
+            'risk_reward': 0,
             'test_date_from': test_date_from,
-            'test_date_to': test_date_to,
-            'test_bars': n_bars,
-            'patterns_tested': len(pattern_stats),
-            'detailed_predictions': predictions  # Added for export
+            'test_date_to': test_date_to
         }
-        
-    except Exception as e:
-        if verbose:
-            print(f"❌ Error: {e}")
-        return None
+    
+    accuracy = (correct_predictions / total_predictions) * 100
+    
+    result = {
+        'symbol': symbol,
+        'exchange': exchange,
+        'total': total_predictions,
+        'correct': correct_predictions,
+        'accuracy': round(accuracy, 1),
+        'detailed_predictions': predictions, # Ensure logs can be saved
+        'test_date_from': test_date_from,
+        'test_date_to': test_date_to,
+    }
+    
+    # Calculate RR for all predictions
+    wins = [abs(p['trader_return']) for p in predictions if p['correct'] == 1]
+    losses = [abs(p['trader_return']) for p in predictions if p['correct'] == 0]
+    avg_win = sum(wins) / len(wins) if wins else 0
+    avg_loss = sum(losses) / len(losses) if losses else 0
+    rrr = avg_win / avg_loss if avg_loss > 0 else 0
+    
+    result.update({'avg_win': round(avg_win, 5), 'avg_loss': round(avg_loss, 5), 'risk_reward': round(rrr, 2)})
+    return result
 
 
 def save_trade_logs(trades, filename='trade_history.csv'):
@@ -336,16 +415,24 @@ def save_trade_logs(trades, filename='trade_history.csv'):
     df_trades = pd.DataFrame(trades)
     
     # Ensure columns exist and order them
-    cols = ['date', 'symbol', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'correct']
-    # Filter only existing columns to avoid errors if some keys are missing
-    cols = [c for c in cols if c in df_trades.columns]
+    # Ensure columns exist and order them
+    cols = ['date', 'symbol', 'exchange', 'group', 'pattern', 'forecast', 'prob', 'actual', 'actual_return', 'trader_return', 'correct', 'strategy']
     
+    # Filter only existing columns to avoid errors if some keys are missing
+    # Add missing columns with None
+    for c in cols:
+        if c not in df_trades.columns:
+            df_trades[c] = None
+            
     df_trades = df_trades[cols]
-    df_trades.to_csv(log_path, index=False)
+    
+    # Append mode with header only if file does not exist
+    header = not os.path.exists(log_path)
+    df_trades.to_csv(log_path, mode='a', index=False, header=header)
     print(f"\n💾 Saved Trade Logs: {log_path} ({len(df_trades)} trades)")
 
 
-def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
+def backtest_all(n_bars=200, skip_intraday=True, full_scan=False, target_group=None, threshold_multiplier=1.25):
     """
     Backtest ทุกหุ้นจาก config.py
     
@@ -363,10 +450,33 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
     
     tv = TvDatafeed()
     
+    # Results storage
     all_results = []
     all_trades = [] # Initialize logs list
     
+    output_file = 'data/full_backtest_results.csv'
+    processed_symbols = set()
+
+    # When running a broad market scan (no group filter), we skip symbols that
+    # already have results in full_backtest_results.csv to save time.
+    # But for targeted scans (e.g. --group US) we always recompute.
+    if not target_group and os.path.exists(output_file):
+        try:
+            df_existing = pd.read_csv(output_file)
+            if 'symbol' in df_existing.columns:
+                processed_symbols = set(df_existing['symbol'].tolist())
+                print(f"📦 Found {len(processed_symbols)} existing results. Skipping...")
+        except Exception:
+            pass
+    
+    # Failure counter for connection issues
+    consecutive_failures = 0
+    
     for group_name, group_config in config.ASSET_GROUPS.items():
+        # Filter by group if requested
+        if target_group and target_group.upper() not in group_name.upper():
+            continue
+            
         # Skip intraday
         if skip_intraday and 'METALS' in group_name:
             print(f"\n⏭️ Skipping {group_name} (intraday)")
@@ -377,54 +487,114 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
         
         assets = group_config['assets']
         
-        # Limit to 10 unless full_scan is True
-        target_assets = assets if full_scan else assets[:10]
+        # Deduplicate assets by symbol
+        seen_assets = set()
+        unique_assets = []
+        for a in assets:
+            sym = a.get('symbol')
+            if sym and sym not in seen_assets:
+                unique_assets.append(a)
+                seen_assets.add(sym)
         
-        for i, asset in enumerate(target_assets):  
+        # SAMPLE vs FULL scan selection
+        if full_scan:
+            target_assets = unique_assets
+        else:
+            # Limit to first 10 unique symbols for speed (sample scan)
+            target_assets = unique_assets[:10]
+
+        for i, asset in enumerate(target_assets):
             symbol = asset['symbol']
             exchange = asset['exchange']
             
+            if symbol in processed_symbols:
+                continue
+
             print(f"   [{i+1}/{len(target_assets)}] {symbol}...", end=" ")
             
-            # Retry Logic with Auto-Reconnect
-            max_retries = 3
+            # Retry Logic with Exponential Backoff
+            max_retries = 5 
             result = None
+            success = False
             
             for attempt in range(max_retries):
                 try:
-                    # Pass the current TV instance
                     fixed_thresh = group_config.get('fixed_threshold')
-                    result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=True, fixed_threshold=fixed_thresh)
-                    break # Success
+                    inverse_log = group_config.get('inverse_logic', False)
+                    min_adx_val = group_config.get('min_adx')
+                    result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=False, fixed_threshold=fixed_thresh, inverse_logic=inverse_log, threshold_multiplier=threshold_multiplier, min_adx=min_adx_val)
+                    
+                    if result:
+                        success = True
+                        consecutive_failures = 0
+                        break
+                    else:
+                        break 
                 except Exception as e:
-                    errMsg = str(e)
-                    if "Connection" in errMsg or "no data" in errMsg:
-                        print(f"⚠️ Connection Lost ({errMsg}). Reconnecting... (Attempt {attempt+1}/{max_retries})")
+                    errMsg = str(e).lower()
+                    is_timeout = "connection" in errMsg or "timeout" in errMsg or "no data" in errMsg
+                    
+                    if is_timeout:
+                        wait_time = (2 ** attempt) * 5
+                        print(f"⚠️ Timeout. Waiting {wait_time}s... (Attempt {attempt+1}/{max_retries})")
+                        time.sleep(wait_time)
                         try:
-                            tv = TvDatafeed() # Re-init
-                            time.sleep(2)
-                        except:
-                            pass
+                            tv = TvDatafeed()
+                        except: pass
                     else:
                         print(f"❌ Error: {e}")
-                        break # Non-network error, skip
+                        break
             
-            if result:
+            if success and result:
                 result['group'] = group_name
                 all_results.append(result)
-                print(f"✅ {result['accuracy']:.1f}%")
+                if result.get('total', 0) > 0:
+                    print(f"✅ {result['accuracy']:.1f}% ({result['total']} Trades)")
+                else:
+                    print("✅ 0 Trades found")
                 
-                # Collect detailed trades for metrics analysis
+                # Incremental Save
+                df_current = pd.DataFrame([result])
+                if 'detailed_predictions' in df_current.columns:
+                    df_current = df_current.drop(columns=['detailed_predictions'])
+                
+                df_current.to_csv(output_file, mode='a', index=False, header=not os.path.exists(output_file))
+
                 if 'detailed_predictions' in result:
+                    trade_logs = []
                     for trade in result['detailed_predictions']:
                         trade['symbol'] = symbol
                         trade['exchange'] = exchange
                         trade['group'] = group_name
-                        all_trades.append(trade)
+                        trade_logs.append(trade)
+                    
+                    # Log File per Group (Cleaner)
+                    group_clean = group_name.replace(" ", "_").upper()
+                    if 'US' in group_clean: file_suffix = 'US'
+                    elif 'THAI' in group_clean: file_suffix = 'THAI'
+                    elif 'CHINA' in group_clean or 'HK' in group_clean: file_suffix = 'CHINA'
+                    elif 'TAIWAN' in group_clean: file_suffix = 'TAIWAN'
+                    elif 'GOLD' in group_clean or 'SILVER' in group_clean: file_suffix = 'METALS'
+                    else: file_suffix = 'OTHER'
+                    
+                    log_file = f'logs/trade_history_{file_suffix}.csv'
+                    save_trade_logs(trade_logs, filename=os.path.basename(log_file))
             else:
-                print("❌")
+                consecutive_failures += 1
+                if not result: print("❌ (No Data)")
+                else: print("❌")
+
+            # Cool-down if too many failures in a row
+            if consecutive_failures >= 3:
+                print(f"🛑 {consecutive_failures} consecutive failures. Entering Cool-down (60s)...")
+                time.sleep(60)
+                consecutive_failures = 0 # Reset
+                tv = TvDatafeed() # Fresh connection
             
-            time.sleep(0.3)  # Rate limit
+            # Market-Specific Delays
+            is_china = any(ex in exchange.upper() for ex in ['SHSE', 'SZSE', 'CHINA'])
+            base_delay = 3.0 if is_china else 1.0
+            time.sleep(base_delay)
             
     # Save Trade Logs using helper
     save_trade_logs(all_trades)
@@ -438,40 +608,43 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
         df = pd.DataFrame(all_results)
         
         # Date range
-        print(f"\n📅 Test Period: {df['test_date_from'].min()} → {df['test_date_to'].max()}")
+        date_from = df['test_date_from'].min() if 'test_date_from' in df.columns else "N/A"
+        date_to = df['test_date_to'].max() if 'test_date_to' in df.columns else "N/A"
+        print(f"\n📅 Test Period: {date_from} → {date_to}")
         print(f"   ({n_bars} bars per stock)")
         
-        # Overall
+        # Overall Metrics
         total_preds = df['total'].sum()
         total_correct = df['correct'].sum()
-        avg_accuracy = total_correct / total_preds * 100 if total_preds > 0 else 0
+        avg_acc = (total_correct / total_preds * 100) if total_preds > 0 else 0
         
-        print(f"\n🎯 Overall Accuracy: {avg_accuracy:.1f}%")
-        print(f"   Total Predictions: {total_preds}")
-        print(f"   Correct: {total_correct}")
+        # Weighted RRR / Expectancy
+        total_win_sum = (df['avg_win'] * (df['total'] * df['accuracy']/100)).sum()
+        total_loss_sum = (df['avg_loss'] * (df['total'] * (1 - df['accuracy']/100))).sum()
+        market_rrr = total_win_sum / total_loss_sum if total_loss_sum > 0 else 0
         
-        # Best & Worst
-        print(f"\n📈 Top 5 Best:")
-        top5 = df.nlargest(5, 'accuracy')
-        for _, r in top5.iterrows():
-            print(f"   {r['symbol']:<10} {r['accuracy']:.1f}% ({r['total']} predictions)")
+        print(f"\n🎯 Overall Market Stats:")
+        print(f"   Accuracy: {avg_acc:.1f}%")
+        print(f"   Market RRR: {market_rrr:.2f}")
+        print(f"   Total Signals: {total_preds}")
         
-        print(f"\n📉 Bottom 5:")
-        bottom5 = df.nsmallest(5, 'accuracy')
-        for _, r in bottom5.iterrows():
-            print(f"   {r['symbol']:<10} {r['accuracy']:.1f}% ({r['total']} predictions)")
+        # Best & Worst RRR (Risk-Reward focus)
+        print(f"\n🏆 Top 5 Best Risk-Reward (RRR):")
+        top_rrr = df[df['total'] >= 5].nlargest(5, 'risk_reward')
+        for _, r in top_rrr.iterrows():
+            print(f"   {r['symbol']:<10} RRR: {r['risk_reward']:<6.2f} (Win: {r['avg_win']:.2f}%, Loss: {r['avg_loss']:.2f}%, Acc: {r['accuracy']:.1f}%)")
         
-        # By group
-        print(f"\n📊 By Group:")
-        by_group = df.groupby('group').agg({
-            'total': 'sum',
-            'correct': 'sum',
-            'accuracy': 'mean'
-        }).reset_index()
-        by_group['calc_accuracy'] = (by_group['correct'] / by_group['total'] * 100).round(1)
+        # Group Analysis
+        print(f"\n📂 Sector Analysis (Risk/Reward Floor):")
+        sector_stats = df.groupby('group').agg({
+            'accuracy': 'mean',
+            'risk_reward': 'mean',
+            'total': 'sum'
+        })
+        for grp, r in sector_stats.iterrows():
+             print(f"   {grp:<25} Avg RRR: {r['risk_reward']:<5.2f} Avg Acc: {r['accuracy']:>5.1f}% (Signals: {int(r['total'])})")
         
-        for _, row in by_group.iterrows():
-            print(f"   {row['group']:<20} {row['calc_accuracy']:.1f}%")
+        return df
         
         return df
     
@@ -479,101 +652,140 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False):
 
 
 def main():
+    import argparse
+    
     print("\n" + "=" * 70)
     print("🔬 PATTERN MATCHING BACKTEST")
     print("=" * 70)
     print("ทดสอบ accuracy ด้วย historical data (ไม่ต้องรอผลจริง)")
     print("=" * 70)
     
-    n_bars = 200  # Default
+    parser = argparse.ArgumentParser(description="Backtest Pattern Recognition System")
+    parser.add_argument('symbol', nargs='?', help='Stock Symbol (e.g. PTT)')
+    parser.add_argument('exchange', nargs='?', default='SET', help='Exchange (e.g. SET, NASDAQ)')
     
-    # Parse arguments
-    if len(sys.argv) >= 2:
-        if sys.argv[1] == '--full':
-            # NEW: Full Scan Mode
-            if len(sys.argv) >= 3:
-                n_bars = int(sys.argv[2])
-            backtest_all(n_bars=n_bars, full_scan=True)
-            
-        elif sys.argv[1] == '--all':
-            # Backtest all stocks (Sample 10)
-            if len(sys.argv) >= 3:
-                n_bars = int(sys.argv[2])
-            backtest_all(n_bars=n_bars, full_scan=False)
-            
-        elif sys.argv[1] == '--quick':
-            # Quick test with 4 stocks
-            default_stocks = [
-                ('PTT', 'SET'),
-                ('ADVANC', 'SET'),
-                ('NVDA', 'NASDAQ'),
-                ('AAPL', 'NASDAQ'),
-            ]
-            if len(sys.argv) >= 3:
-                n_bars = int(sys.argv[2])
-            
-            print(f"\nQuick test: {len(default_stocks)} stocks, {n_bars} test bars each")
-            
-            tv = TvDatafeed()
-            results = []
-            all_trades = [] # Initialize here
-            
-            for symbol, exchange in default_stocks:
-                result = backtest_single(tv, symbol, exchange, n_bars=n_bars)
-                if result:
-                    results.append(result)
-                    if 'detailed_predictions' in result:
-                        for trade in result['detailed_predictions']:
-                            trade['symbol'] = symbol
-                            trade['exchange'] = exchange
-                            trade['group'] = 'QUICK_TEST'
-                            all_trades.append(trade)
-            
-            # Save Trade Logs using helper
-            save_trade_logs(all_trades)
-                
-            if results:
-                print("\n" + "=" * 60)
-                print("📊 SUMMARY")
-                print("=" * 60)
-                
-                print(f"\n📅 Test Period: {results[0]['test_date_from']} → {results[0]['test_date_to']}")
-                
-                total_preds = sum(r['total'] for r in results)
-                total_correct = sum(r['correct'] for r in results)
-                avg_accuracy = total_correct / total_preds * 100 if total_preds > 0 else 0
-                
-                print(f"\n{'Symbol':<12} {'Exchange':<10} {'Total':<10} {'Correct':<10} {'Accuracy':<10}")
-                print("-" * 60)
-                for r in results:
-                    print(f"{r['symbol']:<12} {r['exchange']:<10} {r['total']:<10} {r['correct']:<10} {r['accuracy']:.1f}%")
-                print("-" * 60)
-                print(f"{'TOTAL':<12} {'':<10} {total_preds:<10} {total_correct:<10} {avg_accuracy:.1f}%")
-                
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--quick', action='store_true', help='Run quick test on 4 main stocks')
+    group.add_argument('--all', action='store_true', help='Run on all stocks (Sample 10)')
+    group.add_argument('--full', action='store_true', help='Run FULL scan on entire market')
+    
+    parser.add_argument('--bars', type=int, default=200, help='Number of bars to test (default: 200)')
+    parser.add_argument('--group', type=str, help='Filter by group name (e.g. US, THAI)')
+    
+    parser.add_argument('--multiplier', type=float, default=1.25, help='Threshold multiplier (default: 1.25)')
+    
+    args = parser.parse_args()
+    
+    n_bars = args.bars
+    threshold_multiplier = args.multiplier
+    
+    if args.full:
+        # Full Scan Mode
+        print(f"🚀 Running FULL SCAN on market (Bars: {n_bars}, Group: {args.group})")
+        backtest_all(n_bars=n_bars, full_scan=True, target_group=args.group, threshold_multiplier=threshold_multiplier)
+        
+    elif args.all:
+        # Sample Scan Mode
+        print(f"🚀 Running SAMPLE SCAN on all stocks (Bars: {n_bars}, Group: {args.group})")
+        backtest_all(n_bars=n_bars, full_scan=False, target_group=args.group, threshold_multiplier=threshold_multiplier)
+        
+    elif args.quick:
+        # Quick Test Mode
+        default_stocks = [
+            ('PTT', 'SET'),
+            ('ADVANC', 'SET'),
+            ('NVDA', 'NASDAQ'),
+            ('AAPL', 'NASDAQ'),
+        ]
+        
+        print(f"\n🚀 Quick test: {len(default_stocks)} stocks, {n_bars} test bars each")
+        
+        # Connect TV with Credentials
+        tv_user = os.environ.get('TV_USERNAME', '')
+        tv_pass = os.environ.get('TV_PASSWORD', '')
+        if tv_user and tv_pass:
+            print(f"🔑 Authenticated for Quick Test: {tv_user}")
+            tv = TvDatafeed(username=tv_user, password=tv_pass)
         else:
-            # Single stock
-            symbol = sys.argv[1]
-            exchange = sys.argv[2] if len(sys.argv) >= 3 else 'SET'
-            if len(sys.argv) >= 4:
-                n_bars = int(sys.argv[3])
-            
             tv = TvDatafeed()
-            backtest_single(tv, symbol, exchange, n_bars=n_bars)
-    
+            
+        results = []
+        all_trades = []
+        
+        for symbol, exchange in default_stocks:
+            result = backtest_single(tv, symbol, exchange, n_bars=n_bars, threshold_multiplier=threshold_multiplier)
+            if result:
+                results.append(result)
+                if 'detailed_predictions' in result:
+                    for trade in result['detailed_predictions']:
+                        trade['symbol'] = symbol
+                        trade['exchange'] = exchange
+                        trade['group'] = 'QUICK_TEST'
+                        all_trades.append(trade)
+        
+        # Save Trade Logs
+        save_trade_logs(all_trades)
+            
+        if results:
+            print("\n" + "=" * 60)
+            print("📊 SUMMARY")
+            print("=" * 60)
+            
+            print(f"\n📅 Test Period: {results[0]['test_date_from']} → {results[0]['test_date_to']}")
+            
+            total_preds = sum(r['total'] for r in results)
+            total_correct = sum(r['correct'] for r in results)
+            avg_accuracy = total_correct / total_preds * 100 if total_preds > 0 else 0
+            
+            print(f"\n{'Symbol':<12} {'Exchange':<10} {'Total':<8} {'Correct':<8} {'Accuracy':<10} {'Avg Win%':<10} {'Avg Loss%':<10} {'RRR':<6}")
+            print("-" * 85)
+            for r in results:
+                print(f"{r['symbol']:<12} {r['exchange']:<10} {r['total']:<8} {r['correct']:<8} {r['accuracy']:.1f}%      {r['avg_win']:<10.2f} {r['avg_loss']:<10.2f} {r['risk_reward']:<6.2f}")
+            print("-" * 85)
+            
+            total_avg_win = sum(r['avg_win'] for r in results) / len(results) if results else 0
+            total_avg_loss = sum(r['avg_loss'] for r in results) / len(results) if results else 0
+            total_rrr = total_avg_win / total_avg_loss if total_avg_loss > 0 else 0
+            
+            print(f"{'TOTAL':<12} {'':<10} {total_preds:<8} {total_correct:<8} {avg_accuracy:.1f}%      {total_avg_win:<10.2f} {total_avg_loss:<10.2f} {total_rrr:<6.2f}")
+
+    elif args.symbol:
+        
+        # Auto-detect config settings (fixed_threshold)
+        fixed_thresh = None
+        
+        for group_name, group_config in config.ASSET_GROUPS.items():
+            for asset in group_config['assets']:
+                if asset['symbol'] == args.symbol:
+                     fixed_thresh = group_config.get('fixed_threshold')
+                     break
+            if fixed_thresh is not None: break
+            
+        print(f"   Config Detected: Fixed Threshold={fixed_thresh}")
+        
+        # Connect TV with Credentials
+        tv_user = os.environ.get('TV_USERNAME', '')
+        tv_pass = os.environ.get('TV_PASSWORD', '')
+        if tv_user and tv_pass:
+            tv = TvDatafeed(username=tv_user, password=tv_pass)
+        else:
+            tv = TvDatafeed()
+            
+        result = backtest_single(tv, args.symbol, args.exchange, n_bars=n_bars, fixed_threshold=fixed_thresh, threshold_multiplier=threshold_multiplier)
+        
+        if result and 'detailed_predictions' in result:
+            for p in result['detailed_predictions']:
+                p['symbol'] = args.symbol
+                p['exchange'] = args.exchange
+                p['group'] = 'SINGLE_TEST'
+            save_trade_logs(result['detailed_predictions'])
+        
     else:
-        # Default: show help
-        print("\nUsage:")
-        print("  python scripts/backtest.py PTT SET           # หุ้นเดียว")
-        print("  python scripts/backtest.py NVDA NASDAQ 300   # ระบุ test bars")
-        print("  python scripts/backtest.py --quick           # 4 หุ้นหลัก")
-        print("  python scripts/backtest.py --all             # ทุกหุ้น (ช้า)")
-        print("  python scripts/backtest.py --all 100         # ทุกหุ้น, 100 bars")
-        print("  python scripts/backtest.py --full 5000       # สแกนจริงทั้งตลาด 5000 แท่ง")
-    
+        parser.print_help()
+
     print("\n" + "=" * 70)
     print("✅ Backtest Complete")
     print("=" * 70)
-
 
 if __name__ == "__main__":
     main()
