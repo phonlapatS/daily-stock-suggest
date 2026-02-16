@@ -70,6 +70,10 @@ def process_symbol_metrics(symbol, exchange, trades):
     """
     if trades.empty: return []
     
+    # Ensure symbol is string (may be int from CSV)
+    symbol = str(symbol)
+    exchange = str(exchange) if exchange else 'SET'
+    
     # 1. Fetch Historical Data
     # We need enough history to cover the last trade + 5 days
     # Defaulting to 5000 bars to be safe
@@ -153,6 +157,10 @@ def analyze_holding_periods():
     print(f"✅ Loaded {len(all_trades)} trades. Fetching price history...")
     
     # 2. Process per Symbol (Parallel)
+    # Ensure symbol and exchange are strings (may be int/float from CSV)
+    all_trades['symbol'] = all_trades['symbol'].astype(str)
+    all_trades['exchange'] = all_trades['exchange'].astype(str)
+    
     grouped = all_trades.groupby(['symbol', 'exchange'])
     all_results = []
     

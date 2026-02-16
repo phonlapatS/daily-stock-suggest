@@ -1,4 +1,4 @@
-# System Workflow - Stock Analysis System (V3.4)
+# System Workflow - Stock Analysis System (V4.1)
 
 ## 📐 System Architecture
 
@@ -43,7 +43,7 @@ graph TB
 
 ---
 
-## 🔄 Data Flow (V3.4)
+## 🔄 Data Flow (V4.1)
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ sequenceDiagram
 
 ---
 
-## 📁 File Structure (V3.4)
+## 📁 File Structure (V4.1)
 
 ```
 predict/
@@ -106,9 +106,9 @@ predict/
 
 ---
 
-## ⚙️ Key Components (V3.4)
+## ⚙️ Key Components (V4.1)
 
-### **1. Dynamic Pattern Detection (NEW in V3.4)**
+### **1. Dynamic Pattern Detection (V4.1)**
 ```
 File: processor.py
 
@@ -123,30 +123,35 @@ Logic:
 - Select longest one with Probability > 55% (or fallback to longest available)
 ```
 
-### **2. Adaptive Backtest Engine (NEW in V3.4)**
+### **2. Backtest Engine with Risk Management (V4.1)**
 ```
 File: scripts/backtest.py
 
 Features:
+✅ Risk Management: Stop Loss, Take Profit, Trailing Stop, Position Sizing
+✅ Production Mode: Slippage, Commission, Gap Risk, Liquidity Filter
+✅ Market-Specific Parameters: Thai (1.0x), US (0.9x), TW/CN (0.9x)
+✅ Gatekeeper Logic: Prob >= 53% (Thai), 52% (US), 53% (TW/CN)
 ✅ Dynamic Split: 80% Train / 20% Test for short-history stocks
-✅ Min Threshold: 220 bars minimum (was 1000)
 ✅ Auto-Reconnect: Handles network drops during long scans
-✅ Includes New Stocks: TRUE, AWC, OR now pass validation
 
 Usage:
 python scripts/backtest.py --full 5000  # Run all stocks, 5000 bars
 ```
 
-### **3. 4-Table Metrics Report (Enhanced in V3.4)**
+### **3. Market-Specific Metrics Report (V4.1)**
 ```
 File: scripts/calculate_metrics.py
 
 Features:
-✅ Min 30 Signals Filter: Removes statistically weak candidates
-✅ Table 1 (Thai Strict):   Prob > 60%, RR > 2.0   (The Elite)
-✅ Table 2 (Thai Balanced): Prob > 60%, RR > 1.5   (The Core)
-✅ Table 3 (Intl Observe):  Prob > 55%, RR > 1.1   (Global Candidates)
-✅ Table 4 (Intl Sensitivity): Prob > 50%, RR > 0.5 (Deep Dive)
+✅ Count Prominent: Width 12, Comma formatting (Statistical Reliability)
+✅ All Passing Stocks: Displayed (No .head() limit - Transparent)
+✅ Sorting: By Prob% (Descending)
+✅ Market-Specific Criteria:
+   - THAI: Prob >= 60%, RRR >= 1.2, Count >= 30
+   - US: Prob >= 55%, RRR >= 1.2, Count >= 15
+   - CHINA/HK: Prob >= 55%, RRR >= 1.2, Count >= 15
+   - TAIWAN: Prob >= 55%, RRR >= 1.2, Count >= 15
 
 Usage:
 python scripts/calculate_metrics.py
@@ -181,10 +186,11 @@ RR = Avg(Real Profit) / Avg(Real Loss)
 *   **Formula:** `Wins / Total Occurrences`
 *   **Note:** คัดเฉพาะ Pattern ที่มีความเชื่อมั่นสูง
 
-### **3. Dynamic Pattern Selection (V3.4)**
+### **3. Dynamic Pattern Selection (V4.1)**
 *   **Scan:** Lengths 3, 4, 5, 6, 7, 8 days
-*   **Select:** Longest pattern with Prob > 55%
+*   **Select:** Longest pattern with Prob >= 53% (Thai), 52% (US), 53% (TW/CN)
 *   **Fallback:** If none exceed threshold, use longest available
+*   **Gatekeeper:** Prob >= 53% (Thai), 52% (US), 53% (TW/CN) + Expectancy > 0
 
 ---
 
@@ -192,18 +198,20 @@ RR = Avg(Real Profit) / Avg(Real Loss)
 
 | Version | Key Changes |
 |---------|-------------|
-| V3.3    | Incremental Stats, Screener Tables |
-| V3.4    | **Dynamic Pattern (3-8 days), Adaptive Split, Intraday Scanner** |
+| V3.4    | Dynamic Pattern (3-8 days), Adaptive Split, Intraday Scanner |
+| V4.1    | **Production-Ready Risk Management, Transparent Display, Statistical Reliability** |
 
 ---
 
 ## 📝 Summary
 
-**ระบบ V3.4 คือ "Adaptive Intelligence"**
-*   เปลี่ยนจาก Fixed Pattern 4 วัน เป็น Dynamic 3-8 วัน
-*   รองรับหุ้นใหม่ (IPO) ด้วย Adaptive Split
+**ระบบ V4.1 คือ "Production-Ready Risk Management System"**
+*   **Philosophy Shift:** จาก Indicator-based → Risk Management-based
+*   **Risk Management:** Stop Loss, Take Profit, Trailing Stop, Position Sizing
+*   **Production Mode:** Slippage, Commission, Gap Risk, Liquidity Filter
+*   **Transparent Display:** Count prominent, All stocks shown, Sorted by Prob%
+*   **Statistical Reliability:** Count >= 30 for THAI (Central Limit Theorem)
 *   ครอบคลุมตลาดโลก (Thai + US + China + HK + Taiwan)
-*   เพิ่มระบบ Intraday สำหรับ Gold/Silver (24h)
 *   ระบบเสถียร พร้อมใช้งานจริงแบบ Production
 
 ---

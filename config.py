@@ -90,39 +90,48 @@ ASSET_GROUPS = {
     # (Based on Backtest Analysis: 5000 bars per TF)
     # ==========================================
     
-    # GOLD (XAUUSD) - Optimal: 0.10% for both timeframes
+    # GOLD (XAUUSD) - Breakout Logic ตาม Session (Flow เงินเข้าชัดเจนช่วงเปิดตลาด)
+    # Strategy: TREND_FOLLOWING (Breakout) - ตาม momentum
+    # เน้น Prob% และ RRR (Target: Prob% ~50%+, RRR ~1.0+)
     "GROUP_C1_GOLD_30M": {
         "description": "Gold Intraday 30min",
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.10,  # Backtest: 90 trades, RR 1.74
-        "engine": "MEAN_REVERSION"
+        "fixed_threshold": 0.60,  # เพิ่ม threshold เพื่อเน้น Prob% และ RRR (0.55 → 0.60)
+        "engine": "TREND_FOLLOWING"  # Breakout Logic ตาม Session
     },
+    # GOLD (XAUUSD) 15M - Breakout Logic ตาม Session
+    # Focus: เพิ่ม Prob% ใกล้ 60% และ RRR ใกล้ 1.5
+    # ปรับ parameters เพื่อเพิ่ม Prob% และ RRR (เพิ่ม threshold เพื่อกรองสัญญาณที่ดีขึ้น)
     "GROUP_C2_GOLD_15M": {
         "description": "Gold Intraday 15min",
         "interval": Interval.in_15_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.10,  # Backtest: 108 trades, RR 0.96
-        "engine": "MEAN_REVERSION"
+        "fixed_threshold": 0.25,  # ลด threshold เพื่อให้มี trades (0.30 → 0.25) - balance Prob% และ Count
+        "engine": "TREND_FOLLOWING"  # Breakout Logic ตาม Session
     },
     
-    # SILVER (XAGUSD) - Different optimal thresholds per TF
+    # SILVER (XAGUSD) - Mean Reversion/Fakeout (High Volatility, False Break บ่อย)
+    # เน้น Prob% และ RRR (Target: Prob% ~45%+, RRR ~1.0+)
     "GROUP_D1_SILVER_30M": {
         "description": "Silver Intraday 30min",
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.15,  # Backtest: 34 trades, Acc 61.8%, RR 1.01
+        "fixed_threshold": 0.25,  # เพิ่ม threshold เพื่อเน้น Prob% และ RRR (0.22 → 0.25)
         "engine": "MEAN_REVERSION"
     },
+    # SILVER (XAGUSD) 15M - Mean Reversion/Fakeout
+    # เพิ่ม Prob% เพื่อเพิ่มความมั่นใจในการลงทุน
+    # ปรับ parameters เพื่อ balance Prob% และ Count (ลดจาก 0.55 → 0.50 เพื่อให้มี trades)
     "GROUP_D2_SILVER_15M": {
         "description": "Silver Intraday 15min",
         "interval": Interval.in_15_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.20,  # Backtest: 53 trades, RR 1.42
+        "fixed_threshold": 0.60,  # เพิ่ม threshold เพื่อลด Count และ balance กับ Gold (0.50 → 0.60)
         "engine": "MEAN_REVERSION"
     },
     "GROUP_C_CHINA_HK": {
@@ -139,8 +148,7 @@ ASSET_GROUPS = {
             {'symbol': '1211', 'exchange': 'HKEX', 'name': 'BYD'},
             {'symbol': '2015', 'exchange': 'HKEX', 'name': 'LI-AUTO'},
             {'symbol': '9868', 'exchange': 'HKEX', 'name': 'XPENG'},
-            {'symbol': '9866', 'exchange': 'HKEX', 'name': 'NIO'},
-            {'symbol': '0981', 'exchange': 'HKEX', 'name': 'SMIC'}
+            {'symbol': '9866', 'exchange': 'HKEX', 'name': 'NIO'}
         ],
         "fixed_threshold": None, 
         "engine": "MEAN_REVERSION", # V4.4: Switched from TREND to REVERSION (data-driven)

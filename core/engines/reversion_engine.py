@@ -1,67 +1,105 @@
 import numpy as np
 import pandas as pd
 from .base_engine import BasePatternEngine
-from core.indicators import calculate_rsi
 
 class MeanReversionEngine(BasePatternEngine):
     """
-    Engine optimized for Mean Reversion (e.g., Thai Market).
-    Bias: Always bet AGAINST the trend of the last candle.
-    Filters: RSI Overbought/Oversold levels.
+    Engine optimized for Mean Reversion (Thai SET, China/HK HKEX).
+    
+    Core Philosophy: Volatility-Based Anomaly Detection
+    - Signal = Price move exceeds Dynamic SD Threshold
+    - Direction = FADE (bet against the anomaly move)
+    - NO RSI filter (V5.0: removed - conflicts with core concept)
+    - Strict Gatekeeper at the end ensures quality
     """
     def analyze(self, df, symbol, settings):
         if df is None or len(df) < 50:
             return []
             
         close = df['close']
+        volume = df['volume']
         pct_change = close.pct_change()
+        exchange = settings.get('exchange', '').upper()
         
-        # 1. INDICATORS
-        rsi = calculate_rsi(close)
-        current_rsi = rsi.iloc[-1]
+        # Market Detection
+        is_thai = any(ex in exchange for ex in ['SET', 'MAI', 'TH'])
+        is_china = any(ex in exchange for ex in ['HKEX', 'SHSE', 'SZSE', 'CHINA'])
         
-        # 2. THRESHOLD LOGIC (V4.2 Hybrid)
-        min_floor = settings.get('min_threshold')
-        # Use BaseEngine's adaptive threshold (Max of 20d, 252d, and Floor)
+        # 1. INDICATORS (No RSI - pure SD approach)
+        # CN Specific Indicators
+        sma50 = close.rolling(50).mean()
+        vol_avg_20 = volume.rolling(20).mean()
+        vr = (volume.iloc[-1] / vol_avg_20.iloc[-1]) if vol_avg_20.iloc[-1] > 0 else 1.0
+        
+        # 2. THRESHOLD LOGIC (Dynamic SD with Market Floor)
+        min_floor = 0.01 if is_thai else 0.005  # TH: 1.0%, CN: 0.5%
         effective_std = self.calculate_dynamic_threshold(pct_change, min_floor)
         current_std = effective_std.iloc[-1]
         
+        # Gate: If today's move is within threshold, no anomaly detected
+        if abs(pct_change.iloc[-1]) < current_std:
+            return []
+            
         results = []
         for length in range(self.min_len, self.max_len + 1):
             window_returns = pct_change.iloc[-length:]
             window_thresh = effective_std.iloc[-length:]
             
             pat_str = self.extract_pattern(window_returns, window_thresh)
-            if not pat_str or len(pat_str) < self.min_len: continue
+            if not pat_str or len(pat_str) < self.min_len:
+                continue
             
-            # STRATEGIC BIAS: Mean Reversion (Fade) (Thai Market)
-            # Last char '+' -> Predict DOWN (SHORT), '-' -> Predict UP (LONG)
+            # STRATEGIC BIAS: Mean Reversion (Fade the move)
+            # + (Up anomaly) -> SHORT (expect reversion down)
+            # - (Down anomaly) -> LONG (expect reversion up)
             last_char = pat_str[-1]
             if last_char == '+':
                 direction = "SHORT"
             elif last_char == '-':
                 direction = "LONG"
             else:
-                continue # Skip neutral patterns for reversion fade
+                continue
                 
-            # 3. RSI VALIDATION
-            # Only bet Short if Overbought, Long if Oversold
-            is_rsi_valid = False
-            if direction == "SHORT" and current_rsi > 70:
-                is_rsi_valid = True
-            elif direction == "LONG" and current_rsi < 30:
-                is_rsi_valid = True
+            # 3. MARKET-SPECIFIC FILTERS (No RSI — only structural filters)
+            filter_tags = []
             
-            # Data-Driven Validation
+            if is_china:
+                # Volume Ratio (VR) Filter: Skip dead liquidity zones
+                if vr < 0.5:
+                    continue  # Dead Zone — no liquidity
+                if vr > 3.0:
+                    filter_tags.append("FOMO_REVERSION")
+                
+                # Regime Filter: LONG only if Price > SMA50 (healthy uptrend)
+                if direction == "LONG" and close.iloc[-1] < sma50.iloc[-1]:
+                    continue
+                
+            # 4. DATA-DRIVEN VALIDATION (Historical Pattern Stats)
             future_returns = self.get_pattern_stats(close, pct_change, effective_std, pat_str, length)
-            if not future_returns: continue
+            if not future_returns:
+                continue
             
-            # Use base class for standardized math
             stats = self.calculate_stats(future_returns, direction)
             
-            # Final Tradeability (Thai Market: RRR and RSI Confirmation)
-            is_tradeable = stats['win_rate'] >= 60 and stats['rrr'] >= 2.0 and is_rsi_valid
+            # 5. QUALITY FLAG (V5.2: Late Filtering)
+            # -------------------------------------------------------
+            # คืนทุก pattern ที่เกิน threshold (ไม่ filter)
+            # is_tradeable = quality flag สำหรับ sorting/display เท่านั้น
+            # Forward testing จะเป็นคนตัดสินว่า pattern ไหนดีจริงๆ
+            # -------------------------------------------------------
+            if is_thai:
+                is_tradeable = self.check_trustworthy(stats, 60.0, 30)  # WR≥60%, Count≥30
+            elif is_china:
+                is_tradeable = self.check_trustworthy(stats, 60.0, 15)  # WR≥60%, Count≥15
+            else:
+                is_tradeable = self.check_trustworthy(stats, 60.0, 15)  # WR≥60%, Count≥15
+            
+            # CN Volatility Targeting: position size scalar = 2% / Daily_Volatility
+            vol_target_size = None
+            if is_china:
+                vol_target_size = round(2.0 / (current_std * 100), 2)
 
+            # V5.2: Return ALL patterns (no filtering here - late filtering in report)
             results.append({
                 'engine': 'MEAN_REVERSION',
                 'pattern': pat_str,
@@ -69,10 +107,14 @@ class MeanReversionEngine(BasePatternEngine):
                 'prob': stats['win_rate'],
                 'rr': stats['rrr'],
                 'matches': stats['total'],
+                'avg_win': stats['avg_win'],
+                'avg_loss': stats['avg_loss'],
                 'is_reversal': True,
-                'is_tradeable': is_tradeable,
-                'rsi': round(current_rsi, 1),
-                'threshold': round(current_std * 100, 2)
+                'is_tradeable': is_tradeable,  # Quality flag only (not a gatekeeper)
+                'threshold': round(current_std * 100, 2),
+                'vr': round(vr, 2),
+                'filter_tags': filter_tags,
+                'vol_target_size': vol_target_size
             })
             
         return results

@@ -1,0 +1,100 @@
+================================================================================
+RESEARCH REPORT: Failed Stock Symbols
+Generated: 2026-02-13 01:59:05
+================================================================================
+
+
+================================================================================
+STATUS: Likely Delisted
+================================================================================
+
+Symbol: INTUCH
+  Name: Intouch Holdings
+  Exchange: SET
+  Market: Thailand
+  Reason: 
+  Details: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+
+Symbol: ESSO
+  Name: Esso (Thailand)
+  Exchange: SET
+  Market: Thailand
+  Reason: 
+  Details: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+
+Symbol: STARK
+  Name: Stark Corporation
+  Exchange: SET
+  Market: Thailand
+  Reason: 
+  Details: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+
+Symbol: STEC
+  Name: Sino-Thai Engineering
+  Exchange: SET
+  Market: Thailand
+  Reason: 
+  Details: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+
+================================================================================
+STATUS: Wrong Exchange
+================================================================================
+
+Symbol: AZN
+  Name: AstraZeneca
+  Exchange: NASDAQ
+  Market: US
+  Reason: 
+  Details: AstraZeneca (AZN) trades on LSE (London Stock Exchange) as AZN.L, not NASDAQ
+
+================================================================================
+STATUS: Acquired/Delisted
+================================================================================
+
+Symbol: SGEN
+  Name: Seagen
+  Exchange: NASDAQ
+  Market: US
+  Reason: 
+  Details: Seagen (SGEN) was acquired by Pfizer in December 2023 and delisted from NASDAQ
+
+================================================================================
+STATUS: May be Valid
+================================================================================
+
+Symbol: WBA
+  Name: Walgreens Boots Alliance
+  Exchange: NASDAQ
+  Market: US
+  Reason: 
+  Details: Walgreens Boots Alliance (WBA) should be valid on NASDAQ. May be temporary issue or symbol format issue.
+
+================================================================================
+STATUS: Symbol Format Issue
+================================================================================
+
+Symbol: 0981
+  Name: SMIC (Semiconductor Manufacturing)
+  Exchange: HKEX
+  Market: Hong Kong
+  Reason: 
+  Details: HKEX symbols may need different format. Try without leading zero: 981
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+1. DELISTED/ACQUIRED SYMBOLS (Should be removed):
+   - INTUCH: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+   - ESSO: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+   - STARK: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+   - STEC: Thai stock - May have been delisted from SET. Check SET delisted securities list.
+   - SGEN: Seagen (SGEN) was acquired by Pfizer in December 2023 and delisted from NASDAQ
+
+2. WRONG EXCHANGE (Need correction):
+   - AZN: AstraZeneca (AZN) trades on LSE (London Stock Exchange) as AZN.L, not NASDAQ
+
+3. FORMAT ISSUES (May need symbol correction):
+   - 0981: HKEX symbols may need different format. Try without leading zero: 981
+
+================================================================================

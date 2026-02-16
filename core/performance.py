@@ -100,7 +100,7 @@ def log_forecast(results, group_info=None):
         }
         records.append(record)
     
-    # Append to CSV (handle empty file case)
+    # Load existing CSV
     df_existing = pd.read_csv(LOG_FILE)
     df_new = pd.DataFrame(records)
     
@@ -108,13 +108,48 @@ def log_forecast(results, group_info=None):
         # First time logging - use new data directly
         print("📝 [Note] First time logging - creating new log file")
         df_combined = df_new
+        logged_count = len(records)
     else:
-        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+        # Deduplication: เช็คว่ามีข้อมูลซ้ำหรือไม่
+        # ถ้า scan_date, symbol, pattern, forecast, target_date เหมือนกัน → ถือว่าซ้ำ
+        # ใช้ merge เพื่อหา duplicates
+        merge_cols = ['scan_date', 'symbol', 'pattern', 'forecast', 'target_date']
+        
+        # เช็คว่า record ใหม่ซ้ำกับที่มีอยู่หรือไม่
+        if not df_new.empty:
+            # Merge เพื่อหา duplicates
+            merged = df_existing.merge(
+                df_new[merge_cols], 
+                on=merge_cols, 
+                how='inner',
+                indicator=True
+            )
+            
+            # หา records ที่ไม่ซ้ำ
+            df_new_unique = df_new[~df_new.set_index(merge_cols).index.isin(
+                df_existing.set_index(merge_cols).index
+            )]
+            
+            if len(df_new_unique) > 0:
+                df_combined = pd.concat([df_existing, df_new_unique], ignore_index=True)
+                logged_count = len(df_new_unique)
+                skipped_count = len(records) - logged_count
+                if skipped_count > 0:
+                    print(f"⚠️ Skipped {skipped_count} duplicate forecast(s) (already logged today)")
+            else:
+                # ทั้งหมดซ้ำ → ไม่ต้องบันทึก
+                df_combined = df_existing
+                logged_count = 0
+                print(f"⚠️ All {len(records)} forecast(s) already logged today (skipped duplicates)")
+        else:
+            df_combined = df_existing
+            logged_count = 0
     
     df_combined.to_csv(LOG_FILE, index=False)
     
-    print(f"📝 Logged {len(records)} forecasts to {LOG_FILE}")
-    return len(records)
+    if logged_count > 0:
+        print(f"📝 Logged {logged_count} new forecast(s) to {LOG_FILE}")
+    return logged_count
 
 
 def verify_forecast(tv=None):
@@ -143,6 +178,18 @@ def verify_forecast(tv=None):
         print("📊 No pending forecasts to verify (all forecasts are either verified or target_date is in future)")
         return {'verified': 0, 'correct': 0, 'incorrect': 0}
     
+    # Count how many are waiting for market close
+    from core.market_time import is_market_closed
+    waiting_count = 0
+    for _, row in pending.iterrows():
+        exchange = row.get('exchange', 'SET')
+        is_closed, _, _ = is_market_closed(exchange)
+        if not is_closed:
+            waiting_count += 1
+    
+    if waiting_count > 0:
+        print(f"⏳ {waiting_count} forecast(s) waiting for market close (will verify after market closes)")
+    
     # Connect to TradingView if needed
     if tv is None:
         try:
@@ -161,6 +208,15 @@ def verify_forecast(tv=None):
             # Fetch latest price
             symbol = row['symbol']
             exchange = row['exchange']
+            
+            # Check if market is closed before verifying
+            # ถ้าตลาดยังไม่ปิด → ยังไม่ verify (รอให้ตลาดปิดก่อน)
+            from core.market_time import is_market_closed
+            is_closed, status_msg, close_time_ict = is_market_closed(exchange)
+            
+            if not is_closed:
+                # ตลาดยังไม่ปิด → ข้าม (รอให้ตลาดปิดก่อน)
+                continue
             
             # Get 2 bars to compare
             data = tv.get_hist(

@@ -21,18 +21,24 @@ engines = {
     'TREND_MOMENTUM': TrendMomentumEngine()
 }
 
-def analyze_asset(df, symbol=None, fixed_threshold=None, engine_type=None):
+def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_type=None):
     """
     Router function that delegates analysis to the appropriate specialized engine.
     """
     try:
-        if df is None or len(df) < 50:
+        if df is None:
+            return []
+            
+        # V4.9.5: Ensure only clean (filtered) bars are counted and analyzed
+        df = df.dropna()
+        
+        if len(df) < 50:
             return []
             
         # Determine Engine to use
         # Priority: 1. passed engine_type, 2. config based on symbol, 3. Default (MEAN_REVERSION)
         selected_engine_type = engine_type
-        settings = {'fixed_threshold': fixed_threshold}
+        settings = {'fixed_threshold': fixed_threshold, 'exchange': exchange or ''}
         
         if not selected_engine_type and symbol:
             # Look up engine in config ASSET_GROUPS
@@ -46,6 +52,13 @@ def analyze_asset(df, symbol=None, fixed_threshold=None, engine_type=None):
                     
                     # V4.2: Explicitly pass the market floor (min_threshold)
                     settings['min_threshold'] = group_config.get('min_threshold')
+                    
+                    # Inherit exchange from config if not explicitly passed
+                    if not exchange:
+                        for a in group_config['assets']:
+                            if a['symbol'] == symbol:
+                                settings['exchange'] = a.get('exchange', '')
+                                break
                     break
         
         selected_engine_type = selected_engine_type or 'MEAN_REVERSION'
@@ -57,20 +70,35 @@ def analyze_asset(df, symbol=None, fixed_threshold=None, engine_type=None):
         # Post-process results for reporting consistency
         formatted_results = []
         for res in engine_results:
+            # Derive avg_return direction from forecast
+            # If UP forecast: avg_return positive, bull_prob = prob, bear_prob = 100-prob
+            # If DOWN forecast: avg_return negative, bear_prob = prob, bull_prob = 100-prob
+            is_up = (res['forecast'] == 'UP')
+            prob_val = res['prob']
+            
             formatted_results.append({
                 'status': 'MATCH_FOUND',
                 'symbol': symbol or 'Unknown',
                 'price': df['close'].iloc[-1],
                 'is_tradeable': res['is_tradeable'],
-                'acc_score': res['prob'],
+                'acc_score': prob_val,
                 'rr_score': res['rr'],
                 'change_pct': df['close'].pct_change().iloc[-1] * 100,
                 'pattern_display': res['pattern'],
+                'pattern': res['pattern'], # Compatibility key for main.py
                 'matches': res['matches'],
-                'forecast_dir': 1 if res['forecast'] == 'UP' else -1,
+                'forecast_dir': 1 if is_up else -1,
                 'forecast_label': res['forecast'],
                 'strategy_name': f"{res['engine']} ({'REVERSAL' if res.get('is_reversal') else 'TREND' if res.get('is_trend_follow') else 'DATA'})",
-                'confidence': (res['prob'] - 50) * 2
+                'confidence': (prob_val - 50) * 2,
+                # Compatibility keys for generate_report
+                'avg_return': res['rr'] if is_up else -res['rr'],
+                'bull_prob': prob_val if is_up else (100 - prob_val),
+                'bear_prob': (100 - prob_val) if is_up else prob_val,
+                'threshold': res.get('threshold', 0),
+                'avg_win': res.get('avg_win', 0),
+                'avg_loss': res.get('avg_loss', 0),
+                'total_bars': len(df)
             })
             
         return formatted_results
@@ -79,7 +107,4 @@ def analyze_asset(df, symbol=None, fixed_threshold=None, engine_type=None):
         print(f"❌ Error in modular analysis for {symbol}: {e}")
         import traceback
         traceback.print_exc()
-        return []
-
-    except Exception as e:
         return []

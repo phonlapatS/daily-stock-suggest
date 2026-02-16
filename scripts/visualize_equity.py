@@ -15,20 +15,19 @@ def visualize_equity(trade_file='logs/trade_history.csv', output_file='data/equi
     df = pd.read_csv(trade_file)
     df['date'] = pd.to_datetime(df['date'])
     
-    # Target Assets (1 representative per market)
+    # Target Assets (representatives per market) - Metals excluded for now
     targets = [
         {'symbol': 'TPIPP',  'label': 'TH: TPIPP (Thai Alpha)'}, 
         {'symbol': 'GOOGL',  'label': 'US: GOOGL (US Winner)'},
         {'symbol': 'BABA',   'label': 'CN: BABA (China ADR)'},
         {'symbol': '2330',   'label': 'TW: TSMC (Taiwan)'},   # 2330.TWSE in cache
-        {'symbol': 'XAUUSD', 'label': 'GL: XAUUSD (Gold)'}
     ]
     
     # Create 3 Subplots
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 16))
     
     # Soft Colors for readability (one per market)
-    colors = ['#2ecc71', '#3498db', '#9b59b6', '#e74c3c', '#f1c40f'] 
+    colors = ['#2ecc71', '#3498db', '#9b59b6', '#e74c3c'] 
     
     for i, target in enumerate(targets):
         symbol = target['symbol']

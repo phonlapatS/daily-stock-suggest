@@ -1,7 +1,7 @@
-# 📘 Project Manual: Fractal N+1 Prediction System (V3.4)
+# 📘 Project Manual: Fractal N+1 Prediction System (V4.1)
 
-> **Status:** Active | **Codename:** The Adaptive Engine | **Version:** 3.4  
-> **Last Updated:** 2026-02-05
+> **Status:** Active | **Codename:** Production-Ready Risk Management System | **Version:** 4.1  
+> **Last Updated:** 2026-02-XX
 
 ---
 
@@ -26,6 +26,10 @@
 The **Fractal N+1 Prediction System** is a statistical arbitrage tool designed to forecast the "Next Day" direction of financial assets. Unlike traditional technical analysis which uses indicators (RSI, MACD), this system uses **Pattern Recognition** based on historical probability.
 
 **Key Philosophy:** "History doesn't repeat itself, but it often rhymes."
+
+**V4.1 Philosophy Shift:** From Indicator-based → Risk Management-based
+- **V6.0 (Old):** Used ADX, SMA50, Volume Ratio as filters
+- **V4.1 (Current):** Uses Pattern Matching + History Statistics, focuses on comprehensive Risk Management
 
 ---
 
@@ -206,13 +210,21 @@ This section documents the development timeline from the initial prototype to th
     *   *Output:* Created the **4-Table Strategy** (Strict, Balanced, Obs, Sens).
     *   *Logging:* Added `core/performance.py` to track daily accuracy vs actuals.
 
-### 📅 Phase 3: The Adaptive Engine (Current V3.4)
+### 📅 Phase 3: The Adaptive Engine (V3.4)
 *   **V3.4 (Adaptive Logic):**
     *   *Breakthrough:* System now scans **3 to 8 day patterns** dynamically.
     *   *Optimization:* Finds the "Golden Length" for each stock (some respect 3-day cycles, others 5-day).
     *   *Infrastructure:* Added **Local Caching System** (reduces API time by 99%).
     *   *Expansion:* Full Universe support (Thai SET100, US Tech, China, Metals).
     *   *Real-time:* Added **Intraday Scanner** for Gold/Silver (15m/30m).
+
+### 📅 Phase 4: Production-Ready Risk Management (Current V4.1)
+*   **V4.1 (Production-Ready):**
+    *   *Philosophy Shift:* จาก Indicator-based → Risk Management-based
+    *   *Risk Management:* Stop Loss, Take Profit, Trailing Stop, Position Sizing
+    *   *Production Mode:* Slippage, Commission, Gap Risk, Liquidity Filter
+    *   *Transparent Display:* Count prominent, All stocks shown, Sorted by Prob%
+    *   *Statistical Reliability:* Count >= 30 for THAI (Central Limit Theorem)
 
 ---
 
