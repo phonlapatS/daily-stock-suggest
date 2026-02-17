@@ -21,6 +21,12 @@ import matplotlib.dates as mdates
 from datetime import datetime
 import glob
 
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 # Resolve path for config import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
@@ -141,26 +147,27 @@ def filter_trades_by_criteria(trades, country_code):
     metrics_df = pd.DataFrame(symbol_metrics)
     
     # Apply filters based on country (same as calculate_metrics.py)
+    # V14.2: ใช้เกณฑ์เข้มงวด Prob > 60% และ RRR > 2.0 เท่านั้น
     if country_code == 'TH':
-        # THAI: Prob >= 60%, RRR >= 1.3, Count >= 30
+        # THAI: Prob > 60%, RRR > 2.0, Count >= 5
         filtered_symbols = metrics_df[
-            (metrics_df['prob'] >= 60.0) & 
-            (metrics_df['rrr'] >= 1.3) &
-            (metrics_df['count'] >= 30)
+            (metrics_df['prob'] > 60.0) &  # V14.2: เปลี่ยนจาก >= เป็น >
+            (metrics_df['rrr'] > 2.0) &  # V14.2: เปลี่ยนจาก >= 1.3 เป็น > 2.0
+            (metrics_df['count'] >= 5)  # V14.2: ลดจาก 30 เป็น 5
         ]['symbol'].tolist()
     elif country_code == 'US':
-        # US: Prob >= 60%, RRR >= 1.5, Count >= 15
+        # US: Prob >= 60%, RRR >= 1.5, Count >= 15 (คงเดิม)
         filtered_symbols = metrics_df[
             (metrics_df['prob'] >= 60.0) & 
             (metrics_df['rrr'] >= 1.5) &
             (metrics_df['count'] >= 15)
         ]['symbol'].tolist()
     elif country_code in ['CN', 'HK']:
-        # CHINA/HK: Prob >= 60%, RRR >= 1.2, Count >= 15
+        # CHINA/HK: Prob > 60%, RRR > 2.0, Count >= 5
         filtered_symbols = metrics_df[
-            (metrics_df['prob'] >= 60.0) & 
-            (metrics_df['rrr'] >= 1.2) &
-            (metrics_df['count'] >= 15)
+            (metrics_df['prob'] > 60.0) &  # V14.2: เปลี่ยนจาก >= เป็น >
+            (metrics_df['rrr'] > 2.0) &  # V14.2: เปลี่ยนจาก >= 1.2 เป็น > 2.0
+            (metrics_df['count'] >= 5)  # V14.2: ลดจาก 15 เป็น 5
         ]['symbol'].tolist()
     elif country_code == 'TW':
         # TAIWAN: Prob >= 50%, RRR >= 1.0, Count >= 15
@@ -341,7 +348,68 @@ def plot_single_market_equity(equity_df, market_name, country_code, output_dir='
     plt.close()
 
 def filter_by_qualifying_symbols(trades, country_code):
-    """Filter trades to only include qualifying symbols for a given market."""
+    """
+    Filter trades to only include qualifying symbols for a given market.
+    V14.3: ใช้ qualifying symbols จาก calculate_metrics.py output แทน hardcoded list
+    """
+    # Try to load from symbol_performance.csv (created by calculate_metrics.py)
+    perf_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'symbol_performance.csv')
+    if os.path.exists(perf_file):
+        try:
+            perf_df = pd.read_csv(perf_file)
+            # Map country codes
+            country_map = {'TH': 'TH', 'US': 'US', 'CN': 'CN', 'HK': 'HK', 'TW': 'TW', 'GL': 'GL'}
+            target_country = country_map.get(country_code, country_code)
+            
+            # Get qualifying symbols based on criteria (same as calculate_metrics.py)
+            if country_code == 'TH':
+                # THAI: Prob > 60%, RRR > 2.0, Count >= 5
+                qualifying = perf_df[
+                    (perf_df['Country'] == target_country) &
+                    (perf_df['Prob%'] > 60.0) &
+                    (perf_df['RR_Ratio'] > 2.0) &
+                    (perf_df['Count'] >= 5)
+                ]
+            elif country_code == 'US':
+                # US: Prob >= 60%, RRR >= 1.5, Count >= 15
+                qualifying = perf_df[
+                    (perf_df['Country'] == target_country) &
+                    (perf_df['Prob%'] >= 60.0) &
+                    (perf_df['RR_Ratio'] >= 1.5) &
+                    (perf_df['Count'] >= 15)
+                ]
+            elif country_code in ['CN', 'HK']:
+                # CHINA/HK: Prob > 60%, RRR > 2.0, Count >= 5
+                qualifying = perf_df[
+                    ((perf_df['Country'] == 'CN') | (perf_df['Country'] == 'HK')) &
+                    (perf_df['Prob%'] > 60.0) &
+                    (perf_df['RR_Ratio'] > 2.0) &
+                    (perf_df['Count'] >= 5)
+                ]
+            elif country_code == 'TW':
+                # TAIWAN: Prob >= 50%, RRR >= 1.0, Count >= 15
+                qualifying = perf_df[
+                    (perf_df['Country'] == target_country) &
+                    (perf_df['Prob%'] >= 50.0) &
+                    (perf_df['RR_Ratio'] >= 1.0) &
+                    (perf_df['Count'] >= 15)
+                ]
+            else:
+                # METALS or other: return all trades
+                return trades
+            
+            if not qualifying.empty:
+                qualifying_symbols = qualifying['symbol'].astype(str).str.upper().str.strip().tolist()
+                # Normalize symbol names for matching
+                trades_copy = trades.copy()
+                trades_copy['_sym_upper'] = trades_copy['symbol'].astype(str).str.upper().str.strip()
+                filtered = trades_copy[trades_copy['_sym_upper'].isin(qualifying_symbols)].copy()
+                filtered.drop(columns=['_sym_upper'], inplace=True)
+                return filtered
+        except Exception as e:
+            print(f"   ⚠️ Error loading symbol_performance.csv: {e}")
+    
+    # Fallback: Use hardcoded QUALIFYING_SYMBOLS
     symbols = QUALIFYING_SYMBOLS.get(country_code)
     if symbols is None:
         return trades  # No filter (e.g. Metals — include all)
@@ -364,12 +432,13 @@ def plot_all_markets_combined(all_trades, output_dir='data/plots'):
     os.makedirs(output_dir, exist_ok=True)
 
     # Market configuration
+    # V14.3: เอา Metals market ออก (ยังไม่ได้ทำ)
     markets_config = {
         'US': {'name': 'US (NASDAQ)',      'color': '#0077CC', 'label': 'US Market'},
         'TW': {'name': 'Taiwan (TWSE)',    'color': '#FF8800', 'label': 'Taiwan Market'},
         'CN': {'name': 'China/HK (HKEX)', 'color': '#CC2222', 'label': 'China/HK Market'},
         'TH': {'name': 'Thai (SET)',       'color': '#22AA44', 'label': 'Thai Market'},
-        'GL': {'name': 'Metals',           'color': '#7733CC', 'label': 'Metals Market'},
+        # 'GL': {'name': 'Metals',           'color': '#7733CC', 'label': 'Metals Market'},  # V14.3: เอาออก (ยังไม่ได้ทำ)
     }
 
     # Calculate equity curves for each market (filtered by qualifying symbols)
@@ -381,7 +450,8 @@ def plot_all_markets_combined(all_trades, output_dir='data/plots'):
         if market_trades.empty:
             continue
 
-        # Filter to qualifying symbols only
+        # Filter to qualifying symbols only (use same criteria as calculate_metrics.py)
+        # V14.3: ใช้ filter_by_qualifying_symbols ที่อ่านจาก symbol_performance.csv
         filtered = filter_by_qualifying_symbols(market_trades, country_code)
         if filtered.empty:
             print(f"   ⚠️ No qualifying trades for {cfg['label']}")
@@ -552,6 +622,7 @@ def main():
             print(f"   ⚠️ No trades found for {market_name}")
             continue
 
+        # V14.3: ใช้ filter_by_qualifying_symbols ที่อ่านจาก symbol_performance.csv
         filtered = filter_by_qualifying_symbols(market_trades, country_code)
         if filtered.empty:
             print(f"   ⚠️ No qualifying trades for {market_name}")

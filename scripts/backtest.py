@@ -391,7 +391,7 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
     # ============================================================================
     if threshold_multiplier is None:
         if is_thai_market:
-            threshold_multiplier = 1.0     # Thai V10.1: ลดจาก 1.25 → 1.0 (เพิ่มสัญญาณ)
+            threshold_multiplier = 1.1     # Thai V14.0: เพิ่มจาก 1.0 → 1.1 (กรองสัญญาณ, เพิ่มคุณภาพ)
         elif is_us_market:
             threshold_multiplier = 0.9     # US: sweet spot
         elif is_tw_market_early:
@@ -421,15 +421,15 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
             else:
                 min_stats = kwargs.get('min_stats', 35)  # 30min: 35 (คงค่าเดิม)
         elif is_thai_market:
-            min_stats = 25                 # Thai V10.1: ลดจาก 30 → 25
+            min_stats = 30                 # Thai V14.0: เพิ่มจาก 25 → 30 (เพิ่มคุณภาพ, เพิ่ม Prob%)
         elif is_us_market:
             min_stats = 20                 # US: relaxed
         elif is_tw_market_early:
             min_stats = 25                 # Taiwan V12.1: เพิ่มจาก 20 → 25 (ลด patterns, เพิ่มคุณภาพ)
         elif is_china_market:
             # China Market: Default min_stats (can be overridden via kwargs)
-            # V13.7: เพิ่มจาก 25 → 30 (เพิ่มคุณภาพ, RRR 1.40)
-            min_stats = kwargs.get('min_stats', 30)  # CN V13.7: เพิ่มจาก 25 → 30
+            # V14.0: เพิ่มจาก 30 → 35 (เพิ่มคุณภาพ, เพิ่ม Prob%)
+            min_stats = kwargs.get('min_stats', 35)  # CN V14.0: เพิ่มจาก 30 → 35
         else:
             min_stats = 25                 # Default fallback
     
@@ -584,19 +584,20 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
         # CHINA MARKET RISK MANAGEMENT - Separated for clarity and testing
         # ========================================================================
         # China/HK: ATR-based SL/TP for Flexibility (Auto System)
+        # V14.1: Fix AvgLoss > AvgWin Problem
         # - ATR-based SL/TP: ยืดหยุ่นตาม volatility ของแต่ละหุ้น
         #   - ATR SL 1.0x: หุ้นผันผวนมาก → SL กว้าง, ผันผวนน้อย → SL แคบ
-        #   - ATR TP 3.5x: เป้าหมาย RRR 3.5 (ปรับจาก 5.0x → 3.5x - ให้ถึง TP ได้มากขึ้น)
-        # - Min Prob: 54.0% (Gatekeeper - คุณภาพสูง)
-        # - Max Hold: 8 days (ให้มีเวลาไปถึง TP)
-        # - Trailing: Activate 2.0%, Distance 40% (activate ช้าลง - ให้มีเวลาไปถึง TP)
-        # - Target: RRR >= 1.2, Prob% >= 54%
-        # - Updated to match STRATEGY_TABLE_BY_COUNTRY.md (2026-02-13)
+        #   - ATR TP 3.0x: ลดจาก 4.5x → 3.0x (ให้ถึง TP ได้ง่ายขึ้น, แก้ปัญหา AvgLoss > AvgWin)
+        # - Min Prob: 52.0% (Gatekeeper - ลดจาก 55% เพื่อเพิ่ม Win Rate)
+        # - Max Hold: 7 days (คงเดิม - ให้มีเวลาไปถึง TP)
+        # - Trailing: Activate 2.0%, Distance 50% (activate ช้าลง - ให้มีเวลาไปถึง TP)
+        # - Target: RRR >= 1.0, Prob% >= 52%
         # 
-        # ข้อดีของ ATR-based:
-        #   ✅ ยืดหยุ่นตาม volatility (ไม่ lock AvgLoss% ไว้ที่ 1.0%)
-        #   ✅ เอาไปใช้จริงง่าย (auto system)
-        #   ✅ Realistic: ใช้ความผันผวนจริงของหุ้น
+        # การปรับปรุง V14.1:
+        #   ✅ TP 3.0x: ลดจาก 4.5x (ให้ถึง TP ได้ง่ายขึ้น, แก้ปัญหา AvgLoss > AvgWin)
+        #   ✅ Trailing 2.0% activate: activate ช้าลง (จาก 1.5%) - ให้มีเวลาไปถึง TP
+        #   ✅ Trailing 50% distance: เพิ่มจาก 35% (ให้กำไร run ได้มากขึ้น)
+        #   ✅ min_prob 52%: ลดจาก 55% (เพิ่ม Win Rate, แก้ปัญหา overfitting)
         # 
         # All parameters can be overridden via kwargs for testing:
         #   - atr_sl_mult: Override ATR SL multiplier
@@ -607,13 +608,13 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
         # ========================================================================
         RM_STOP_LOSS = None  # V13.5: Use ATR instead of fixed SL
         RM_TAKE_PROFIT = None  # V13.5: Use ATR instead of fixed TP
-        RM_MAX_HOLD = kwargs.get('max_hold', 5)            # Revert: 5 days (ค่าที่เสถียร)
+        RM_MAX_HOLD = kwargs.get('max_hold', 7)            # V14.1: คงเดิม 7 days
         RM_ATR_SL = kwargs.get('atr_sl_mult', 1.0)       # V13.5: ATR multiplier for SL (flexible)
-        RM_ATR_TP = kwargs.get('atr_tp_mult', 3.5)       # ปรับจาก 5.0x → 3.5x (ให้ถึง TP ได้มากขึ้น - based on actual data: TP exits 0.0%)
+        RM_ATR_TP = kwargs.get('atr_tp_mult', 3.0)       # V14.1: ลดจาก 4.5x → 3.0x (ให้ถึง TP ได้ง่ายขึ้น)
         RM_USE_ATR = True  # V13.5: Enable ATR-based SL/TP
         RM_USE_TRAILING = True
-        RM_TRAIL_ACTIVATE = kwargs.get('trail_activate', 2.0)   # ปรับจาก 1.0% → 2.0% (activate ช้าลง - ให้มีเวลาไปถึง TP)
-        RM_TRAIL_DISTANCE = kwargs.get('trail_distance', 40.0)  # V13.5: Keep at 40% (let profits run)
+        RM_TRAIL_ACTIVATE = kwargs.get('trail_activate', 2.0)   # V14.1: เพิ่มจาก 1.5% → 2.0% (activate ช้าลง)
+        RM_TRAIL_DISTANCE = kwargs.get('trail_distance', 50.0)  # V14.1: เพิ่มจาก 35% → 50% (ให้กำไร run ได้มากขึ้น)
     elif is_us_market:
         # ========================================================================
         # US MARKET RISK MANAGEMENT - Separated for clarity and testing
@@ -653,18 +654,21 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
         # THAI MARKET RISK MANAGEMENT - Separated for clarity and testing
         # ========================================================================
         # Thai: ATR-based SL/TP for Flexibility (Auto System)
+        # V14.3: Fix Thai Market Performance (TP Exits 0.2%, SL Exits 30.4%)
         # - ATR-based SL/TP: ยืดหยุ่นตาม volatility ของแต่ละหุ้น
-        #   - ATR SL 1.0x: หุ้นผันผวนมาก → SL กว้าง, ผันผวนน้อย → SL แคบ
-        #   - ATR TP 3.5x: เป้าหมาย RRR 3.5 (เหมือนเดิม - theoretical RRR 3.5)
-        # - Max Hold: 5 days (คงเดิม)
-        # - Trailing: Activate 1.5%, Distance 50% (lock กำไร)
-        # - Target: RRR >= 1.2, Prob% >= 53%
-        # - Updated: เปลี่ยนจาก Fixed SL/TP → ATR-based เพื่อให้ AvgLoss% ยืดหยุ่นขึ้น
+        #   - ATR SL 1.2x: เพิ่มจาก 1.0x → 1.2x (ลด SL exits จาก 30.4%)
+        #   - ATR TP 2.5x: ลดจาก 3.0x → 2.5x (เพิ่ม TP exits จาก 0.2%)
+        # - Max Hold: 10 days (เพิ่มจาก 7 → 10 ให้มีเวลาไปถึง TP)
+        # - Trailing: Activate 2.0%, Distance 60% (activate ช้าลง - ให้มีเวลาไปถึง TP)
+        # - Target: RRR >= 1.0, Prob% >= 48% (ลดจาก 50% เพื่อเพิ่ม Win Rate)
         # 
-        # ข้อดีของ ATR-based:
-        #   ✅ ยืดหยุ่นตาม volatility (ไม่ lock AvgLoss% ไว้ที่ 1.5%)
-        #   ✅ เอาไปใช้จริงง่าย (auto system)
-        #   ✅ Realistic: ใช้ความผันผวนจริงของหุ้น
+        # การปรับปรุง V14.3:
+        #   ✅ TP 2.5x: ลดจาก 3.0x (เพิ่ม TP exits จาก 0.2%)
+        #   ✅ SL 1.2x: เพิ่มจาก 1.0x (ลด SL exits จาก 30.4%)
+        #   ✅ Trailing 2.0% activate: activate ช้าลง (จาก 1.5%) - ให้มีเวลาไปถึง TP
+        #   ✅ Trailing 60% distance: เพิ่มจาก 50% (ให้กำไร run ได้มากขึ้น)
+        #   ✅ Max Hold 10 days: เพิ่มจาก 7 (ให้มีเวลาไปถึง TP)
+        #   ✅ min_prob 48%: ลดจาก 50% (เพิ่ม Win Rate)
         # 
         # All parameters can be overridden via kwargs for testing:
         #   - atr_sl_mult: Override ATR SL multiplier
@@ -691,28 +695,28 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
                 if verbose:
                     print(f"   🔧 Intraday 30min: RM_MAX_HOLD={RM_MAX_HOLD} bars (1 วัน)")
         else:
-            RM_MAX_HOLD = kwargs.get('max_hold', 5)  # Daily: 5 days
+            RM_MAX_HOLD = kwargs.get('max_hold', 10)  # Daily: 10 days (เพิ่มจาก 7 → 10)
         
         RM_STOP_LOSS = None  # Use ATR instead of fixed SL
         RM_TAKE_PROFIT = None  # Use ATR instead of fixed TP
-        RM_ATR_SL = kwargs.get('atr_sl_mult', 1.0)       # ATR multiplier for SL (flexible)
+        RM_ATR_SL = kwargs.get('atr_sl_mult', 1.2)       # V14.3: เพิ่มจาก 1.0x → 1.2x (ลด SL exits)
         
         # Gold 15min: เพิ่ม ATR TP multiplier เพื่อเพิ่ม RRR ใกล้ 1.5
         if is_intraday and kwargs.get('interval') == Interval.in_15_minute:
             is_gold_15m = any(x in symbol.upper() for x in ['XAUUSD', 'GOLD'])
             if is_gold_15m:
-                RM_ATR_TP = kwargs.get('atr_tp_mult', 4.5)  # Gold 15min: 4.5 (เพิ่มจาก 3.5 → 4.5 เพื่อเพิ่ม RRR ใกล้ 1.5)
+                RM_ATR_TP = kwargs.get('atr_tp_mult', 4.5)  # Gold 15min: 4.5 (คงค่าเดิม)
                 if verbose:
                     print(f"   🔧 Gold 15min: RM_ATR_TP={RM_ATR_TP} (เพิ่ม RRR)")
             else:
                 RM_ATR_TP = kwargs.get('atr_tp_mult', 3.5)  # Silver 15min: 3.5 (คงค่าเดิม)
         else:
-            RM_ATR_TP = kwargs.get('atr_tp_mult', 3.5)  # Default: 3.5
+            RM_ATR_TP = kwargs.get('atr_tp_mult', 2.5)  # V14.3: ลดจาก 3.0x → 2.5x (เพิ่ม TP exits)
         
         RM_USE_ATR = True  # Enable ATR-based SL/TP
         RM_USE_TRAILING = True
-        RM_TRAIL_ACTIVATE = kwargs.get('trail_activate', 1.5)   # Activate at 1.5%
-        RM_TRAIL_DISTANCE = kwargs.get('trail_distance', 50.0)  # Distance 50%
+        RM_TRAIL_ACTIVATE = kwargs.get('trail_activate', 2.0)   # V14.3: เพิ่มจาก 1.5% → 2.0% (activate ช้าลง)
+        RM_TRAIL_DISTANCE = kwargs.get('trail_distance', 60.0)  # V14.3: เพิ่มจาก 50% → 60% (ให้กำไร run ได้มากขึ้น)
     
     use_risk_mgmt = kwargs.get('use_risk_mgmt', True)
     
@@ -766,9 +770,9 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
     elif is_tw_market:
         min_prob = 51.0  # Taiwan V12.4: ลดจาก 51.5% → 51.0%
     elif is_china_market:
-        min_prob = kwargs.get('min_prob', 54.0)  # V13.9: 54.0%
+        min_prob = kwargs.get('min_prob', 52.0)  # V14.1: ลดจาก 55.0% → 52.0% (เพิ่ม Win Rate, แก้ปัญหา overfitting)
     else:  # Thai
-        min_prob = 53.0
+        min_prob = 48.0  # V14.3: ลดจาก 50.0% → 48.0% (เพิ่ม Win Rate, แก้ปัญหา overfitting)
     
     for i in range(train_end, len(df) - RM_MAX_HOLD - 1):
         
@@ -873,11 +877,11 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
             p_win = win_count / total
             expectancy = p_win * avg_win - (1 - p_win) * avg_loss
 
-            # 🔒 V10.1 BALANCED GATEKEEPER (All Markets Aligned)
-            # Thai: Prob >= 53% (V10.1: ลดจาก 55% → 53% เพิ่มสัญญาณ)
+            # 🔒 V14.3 BALANCED GATEKEEPER (Fix Thai Market Performance)
+            # Thai: Prob >= 48% (V14.3: ลดจาก 50% → 48% เพิ่ม Win Rate, แก้ปัญหา overfitting)
             # US:   Prob >= 52% + Quality filter
             # TW:   Prob >= 51% (V12.0: ลดจาก 53% → 51% เพิ่มสัญญาณ)
-            # CN:   Prob >= 53%
+            # CN:   Prob >= 52% (V14.1: ลดจาก 55% → 52% เพิ่ม Win Rate)
             # Intraday: Prob >= 50% (ต่ำกว่า daily เพราะ intraday มี noise มากกว่า)
             # All:  Expectancy > 0 (must be +EV)
             # Note: min_prob ถูก set แล้วก่อน loop (บรรทัด 743-770) ไม่ต้อง set ใหม่ใน loop นี้
@@ -887,6 +891,11 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
             
             # US Quality Filter: AvgWin must be > AvgLoss (key differentiator)
             if is_us_market and avg_win <= avg_loss:
+                continue
+            
+            # V14.1: Add Quality Filter for Thai/China (AvgWin > AvgLoss)
+            # แก้ปัญหา AvgLoss > AvgWin ที่ทำให้ RRR ต่ำ
+            if (is_thai_market or is_china_market) and avg_win <= avg_loss:
                 continue
             
             candidate_pats.append({
@@ -1114,9 +1123,9 @@ def save_trade_logs(trades, filename='trade_history.csv'):
         df_trades.to_csv(log_path, mode='w', index=False, header=True)
         print(f"\n💾 Saved Trade Logs (OVERWRITE): {log_path} ({len(df_trades)} trades)")
     else:
-    # Append mode with header only if file does not exist
-    header = not os.path.exists(log_path)
-    df_trades.to_csv(log_path, mode='a', index=False, header=header)
+        # Append mode with header only if file does not exist
+        header = not os.path.exists(log_path)
+        df_trades.to_csv(log_path, mode='a', index=False, header=header)
         print(f"\n💾 Saved Trade Logs (APPEND): {log_path} ({len(df_trades)} trades)")
 
 

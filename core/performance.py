@@ -70,17 +70,43 @@ def log_forecast(results, group_info=None):
     
     records = []
     for r in results:
-        # Determine forecast direction
-        avg_ret = r.get('avg_return', 0)
-        if avg_ret > 0:
+        # Determine forecast direction and prob
+        # V6.0: ใช้ prob ของฝั่งที่ชนะ (สูงกว่า) แทน avg_return
+        bull_prob = r.get('bull_prob', 50)
+        bear_prob = r.get('bear_prob', 50)
+        max_prob = max(bull_prob, bear_prob)
+        
+        # V6.0: ตรวจสอบว่า prob > MIN_PROB_THRESHOLD (ควร filter แล้วใน main.py แต่ double-check)
+        # Import threshold from config if available
+        try:
+            import config
+            min_prob_threshold = getattr(config, 'MIN_PROB_THRESHOLD', 50.0)
+        except:
+            min_prob_threshold = 50.0
+        
+        # Skip if prob <= threshold (should not happen but double-check)
+        if max_prob <= min_prob_threshold:
+            continue
+        
+        # ใช้ prob ของฝั่งที่ชนะ (สูงกว่า) - ใช้ max_prob เพื่อความถูกต้อง
+        if bull_prob > bear_prob:
             forecast = 'UP'
-            prob = r.get('bull_prob', 50)
-        elif avg_ret < 0:
+            prob = max_prob  # Use max_prob (bull_prob in this case)
+        elif bear_prob > bull_prob:
             forecast = 'DOWN'
-            prob = r.get('bear_prob', 50)
+            prob = max_prob  # Use max_prob (bear_prob in this case)
         else:
-            forecast = 'NEUTRAL'
-            prob = 50
+            # Fallback: ใช้ avg_return ถ้า prob เท่ากัน
+            avg_ret = r.get('avg_return', 0)
+            if avg_ret > 0:
+                forecast = 'UP'
+                prob = max_prob
+            elif avg_ret < 0:
+                forecast = 'DOWN'
+                prob = max_prob
+            else:
+                forecast = 'NEUTRAL'
+                prob = max_prob  # Use max_prob even for neutral
         
         record = {
             'scan_date': today,
@@ -131,6 +157,13 @@ def log_forecast(results, group_info=None):
             )]
             
             if len(df_new_unique) > 0:
+                # Fix FutureWarning: Ensure both DataFrames have same columns before concat
+                # Add missing columns to df_new_unique with None
+                for col in df_existing.columns:
+                    if col not in df_new_unique.columns:
+                        df_new_unique[col] = None
+                # Ensure column order matches
+                df_new_unique = df_new_unique[df_existing.columns]
                 df_combined = pd.concat([df_existing, df_new_unique], ignore_index=True)
                 logged_count = len(df_new_unique)
                 skipped_count = len(records) - logged_count
@@ -178,14 +211,21 @@ def verify_forecast(tv=None):
         print("📊 No pending forecasts to verify (all forecasts are either verified or target_date is in future)")
         return {'verified': 0, 'correct': 0, 'incorrect': 0}
     
-    # Count how many are waiting for market close
+    # Count how many are waiting for market close (only for today's forecasts)
     from core.market_time import is_market_closed
     waiting_count = 0
     for _, row in pending.iterrows():
         exchange = row.get('exchange', 'SET')
-        is_closed, _, _ = is_market_closed(exchange)
-        if not is_closed:
-            waiting_count += 1
+        target_date_str = row['target_date']
+        target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+        today = datetime.now().date()
+        days_passed = (today - target_date).days
+        
+        # ถ้า target_date = วันนี้ → ต้องรอให้ตลาดปิดก่อน
+        if days_passed == 0:
+            is_closed, _, _ = is_market_closed(exchange)
+            if not is_closed:
+                waiting_count += 1
     
     if waiting_count > 0:
         print(f"⏳ {waiting_count} forecast(s) waiting for market close (will verify after market closes)")
@@ -208,30 +248,86 @@ def verify_forecast(tv=None):
             # Fetch latest price
             symbol = row['symbol']
             exchange = row['exchange']
+            target_date_str = row['target_date']
+            
+            # Map symbol name to symbol code (for HKEX stocks)
+            # Performance log may store name (TENCENT) instead of code (700)
+            symbol_map = {
+                'TENCENT': '700',
+                'ALIBABA': '9988',
+                'MEITUAN': '3690',
+                'XIAOMI': '1810',
+                'BAIDU': '9888',
+                'JD-COM': '9618',
+                'BYD': '1211',
+                'LI-AUTO': '2015',
+                'XPENG': '9868',
+                'NIO': '9866'
+            }
+            if symbol in symbol_map:
+                symbol = symbol_map[symbol]
             
             # Check if market is closed before verifying
-            # ถ้าตลาดยังไม่ปิด → ยังไม่ verify (รอให้ตลาดปิดก่อน)
+            # ถ้า target_date ผ่านมาแล้วหลายวัน → verify ได้เลย (ไม่ต้องรอให้ตลาดปิดในวันนี้)
+            # ถ้า target_date = วันนี้ → ต้องรอให้ตลาดปิดก่อน
             from core.market_time import is_market_closed
-            is_closed, status_msg, close_time_ict = is_market_closed(exchange)
             
-            if not is_closed:
-                # ตลาดยังไม่ปิด → ข้าม (รอให้ตลาดปิดก่อน)
+            target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            today = datetime.now().date()
+            days_passed = (today - target_date).days
+            
+            # ถ้า target_date ผ่านมาแล้ว 1 วันขึ้นไป → verify ได้เลย (ไม่ต้องรอให้ตลาดปิด)
+            if days_passed >= 1:
+                # target_date ผ่านมาแล้ว → verify ได้เลย
+                pass  # Continue to verify
+            else:
+                # target_date = วันนี้ → ต้องรอให้ตลาดปิดก่อน
+                is_closed, status_msg, close_time_ict = is_market_closed(exchange)
+                if not is_closed:
+                    # ตลาดยังไม่ปิด → ข้าม (รอให้ตลาดปิดก่อน)
+                    continue
+            
+            # Get historical data to find price at target_date
+            # Use cache to avoid connection issues
+            from core.data_cache import get_data_with_cache
+            try:
+                data = get_data_with_cache(
+                    tv=tv,
+                    symbol=symbol,
+                    exchange=exchange,
+                    interval=Interval.in_daily,
+                    full_bars=100,  # Get enough bars to cover target_date
+                    delta_bars=10
+                )
+            except Exception as e:
+                print(f"⚠️ Error fetching data for {symbol} ({exchange}): {e}")
                 continue
             
-            # Get 2 bars to compare
-            data = tv.get_hist(
-                symbol=symbol,
-                exchange=exchange,
-                interval=Interval.in_daily,
-                n_bars=5
-            )
-            
             if data is None or len(data) < 2:
+                print(f"⚠️ No data available for {symbol} ({exchange})")
                 continue
             
             # Get price at scan date and target date
             price_at_scan = row['price_at_scan']
-            price_actual = data['close'].iloc[-1]
+            
+            # Try to find price at target_date, otherwise use latest price
+            target_date_dt = datetime.strptime(target_date_str, '%Y-%m-%d')
+            data_index = pd.to_datetime(data.index)
+            
+            # Find closest date to target_date
+            target_idx = None
+            for i, date in enumerate(data_index):
+                if date.date() == target_date:
+                    target_idx = i
+                    break
+            
+            if target_idx is not None:
+                # Use price at target_date
+                price_actual = data['close'].iloc[target_idx]
+            else:
+                # Fallback: use latest price (shouldn't happen if target_date passed)
+                price_actual = data['close'].iloc[-1]
+                print(f"⚠️ Target date {target_date_str} not found in data, using latest price")
             
             # Determine actual direction
             if price_actual > price_at_scan:

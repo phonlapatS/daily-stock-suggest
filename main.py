@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 main.py - Fractal N+1 Prediction Runner (Categorized Edition)
 =============================================================
@@ -26,6 +27,12 @@ from core.data_cache import (
 )
 from core.performance import log_forecast, verify_forecast
 
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -33,8 +40,11 @@ load_dotenv()
 REQUEST_DELAY = 0.3  # V4.8: Optimized for Delta fetch
 BACKOFF_BASE = 2.0   # Exponential backoff multiplier
 
-# Minimum matches threshold (sample size น้อยเกินไป - ดูเหมือนชนะเปล่าๆ)
-MIN_MATCHES_THRESHOLD = 30
+# Import thresholds from config (V6.0 - Configurable)
+# สามารถปรับได้ใน config.py โดยไม่ต้องแก้ code
+MIN_MATCHES_THRESHOLD = config.MIN_MATCHES_THRESHOLD
+MIN_PROB_THRESHOLD = config.MIN_PROB_THRESHOLD
+USE_TIER_CLASSIFICATION = config.USE_TIER_CLASSIFICATION
 
 def _is_true_flag(val) -> bool:
     """
@@ -129,10 +139,10 @@ def show_all_forecasts(results):
             continue
         
         print(f"\n{title}")
-        print("-" * 90)
-        header = f"{'Symbol':<12} {'Pattern':^10} {'Bull%':>8} {'Bear%':>8} {'Matches':>10} {'Tradeable':>10} {'Price':>10}"
+        print("-" * 110)
+        header = f"{'Symbol':<12} {'Pattern':^10} {'Bull%':>8} {'Bear%':>8} {'Matches':>8} {'Total Bars':>12} {'Tradeable':>10} {'Price':>10}"
         print(header)
-        print("-" * 90)
+        print("-" * 110)
         
         # Sort by symbol and pattern
         filtered_results.sort(key=lambda x: (x.get('symbol', ''), x.get('pattern', '')))
@@ -143,14 +153,16 @@ def show_all_forecasts(results):
             bull_prob = r.get('bull_prob', 50)
             bear_prob = r.get('bear_prob', 50)
             matches = r.get('matches', 0)
+            total_bars = r.get('total_bars', 0)
+            if pd.isna(total_bars): total_bars = 0
             is_tradeable = _is_true_flag(r.get('is_tradeable', False))
             price = r.get('price', 0)
             
             tradeable_str = "✅ YES" if is_tradeable else "❌ NO"
             
-            print(f"{symbol:<12} {pattern:^10} {bull_prob:>7.1f}% {bear_prob:>7.1f}% {matches:>10} {tradeable_str:>10} {price:>10.2f}")
+            print(f"{symbol:<12} {pattern:^10} {bull_prob:>7.1f}% {bear_prob:>7.1f}% {matches:>8} {int(total_bars):>12} {tradeable_str:>10} {price:>10.2f}")
         
-        print("-" * 90)
+        print("-" * 110)
         filtered_count = len(filtered_results)
         skipped_count = len(group_results) - filtered_count
         if skipped_count > 0:
@@ -424,12 +436,12 @@ def generate_report(results):
             x['symbol']  # Alphabetical (tiebreaker)
         ))
         
-        # 4. Table Layout - แสดงเฉพาะ forecast ที่ระบบทายจริงๆ
-        header = f"{'Symbol':<12} {'Pattern':^10} {'Forecast':<15} {'Matches (Bars)':>18} {'Prob.':>8}"
+        # 4. Table Layout - แสดงเฉพาะ forecast ที่ระบบทายจริงๆ พร้อม stats
+        header = f"{'Symbol':<12} {'Pattern':^10} {'Forecast':<15} {'Matches':>8} {'Total Bars':>12} {'Prob%':>8}"
         
-        print("-" * 75)
+        print("-" * 85)
         print(header)
-        print("-" * 75)
+        print("-" * 85)
 
         for r in filtered_data:
             # ใช้ forecast ที่ filter แล้ว (ฝั่งที่ชนะชัดเจน)
@@ -443,15 +455,14 @@ def generate_report(results):
             else:
                 continue  # ไม่แสดง SIDE (ไม่ควรมีอยู่แล้วเพราะ filter แล้ว)
             
-            # Format matches with total_bars: "300 (5000)"
+            # Get stats - จำนวนครั้งที่ match กับข้อมูลในอดีต
             matches = r.get('matches', 0)
             total_bars = r.get('total_bars', 0)
             if pd.isna(total_bars): total_bars = 0
-            match_display = f"{matches} ({int(total_bars)})"
             
             pat_label = r.get('pattern', r.get('pattern_display', '???'))
-            print(f"{r['symbol']:<12} {pat_label:^10} {chance:<15} {match_display:>18} {prob_val:>7.0f}%")
-        print("-" * 75)
+            print(f"{r['symbol']:<12} {pat_label:^10} {chance:<15} {matches:>8} {int(total_bars):>12} {prob_val:>7.1f}%")
+        print("-" * 85)
 
     # Export ALL results to CSV (both tradeable and not — for analysis/debug)
     df = pd.DataFrame(results)
@@ -834,14 +845,65 @@ def main():
         # ไม่แสดง ALL FORECASTS เพราะไม่ได้บอกทิศทางและมีข้อมูลซ้ำ
         generate_report(display_results)
 
-        # Step 3: Log ONLY tradeable signals (Engine gate) for next-day verification.
+        # Step 3: Log forecasts based on configurable thresholds (V6.0)
         # Note: Log เฉพาะผลใหม่ (all_results) ไม่ใช่จาก CSV
+        # V6.0: ใช้ Prob > MIN_PROB_THRESHOLD + Matches >= MIN_MATCHES_THRESHOLD
+        # แทนที่จะใช้ is_tradeable (Prob≥60%) เพื่อให้ยืดหยุ่นกว่า
         if all_results:
             try:
-                tradeable = [r for r in all_results if _is_true_flag(r.get('is_tradeable', False))]
-                if tradeable:
-                    log_forecast(tradeable)
-                    print(f"📝 Logged {len(tradeable)} new forecasts for verification tomorrow")
+                # Filter by configurable thresholds
+                eligible = []
+                for r in all_results:
+                    # Get the winning side (higher prob)
+                    bull_prob = r.get('bull_prob', 50)
+                    bear_prob = r.get('bear_prob', 50)
+                    max_prob = max(bull_prob, bear_prob)
+                    matches = r.get('matches', 0)
+                    
+                    # Check thresholds
+                    if max_prob > MIN_PROB_THRESHOLD and matches >= MIN_MATCHES_THRESHOLD:
+                        # Add tier classification if enabled
+                        if USE_TIER_CLASSIFICATION:
+                            r['tier'] = 'A' if max_prob >= 60.0 else 'B'
+                        # Store max_prob for deduplication
+                        r['_max_prob'] = max_prob
+                        eligible.append(r)
+                
+                # V6.1: Deduplicate - ถ้ามี (symbol, pattern, forecast) ซ้ำ → เลือกอันที่มี max_prob สูงสุด
+                if eligible:
+                    from collections import defaultdict
+                    dedup_dict = defaultdict(list)
+                    
+                    # Group by (symbol, pattern, forecast)
+                    for r in eligible:
+                        symbol = r.get('symbol', '')
+                        pattern = r.get('pattern_display', '')
+                        # Determine forecast direction
+                        bull_prob = r.get('bull_prob', 50)
+                        bear_prob = r.get('bear_prob', 50)
+                        forecast = 'UP' if bull_prob > bear_prob else 'DOWN'
+                        key = (symbol, pattern, forecast)
+                        dedup_dict[key].append(r)
+                    
+                    # Select best (highest max_prob) for each group
+                    deduplicated = []
+                    for key, records in dedup_dict.items():
+                        if len(records) > 1:
+                            # Sort by max_prob descending, then by matches descending
+                            records.sort(key=lambda x: (x.get('_max_prob', 0), x.get('matches', 0)), reverse=True)
+                            # Keep only the best one
+                            deduplicated.append(records[0])
+                        else:
+                            deduplicated.append(records[0])
+                    
+                    if deduplicated:
+                        log_forecast(deduplicated)
+                        tier_a = sum(1 for r in deduplicated if r.get('tier') == 'A') if USE_TIER_CLASSIFICATION else 0
+                        tier_b = sum(1 for r in deduplicated if r.get('tier') == 'B') if USE_TIER_CLASSIFICATION else 0
+                        if USE_TIER_CLASSIFICATION:
+                            print(f"📝 Logged {len(deduplicated)} new forecasts (Tier A: {tier_a}, Tier B: {tier_b}) for verification tomorrow")
+                        else:
+                            print(f"📝 Logged {len(deduplicated)} new forecasts (Prob>{MIN_PROB_THRESHOLD}%, Matches>={MIN_MATCHES_THRESHOLD}) for verification tomorrow")
             except Exception as e:
                 print(f"⚠️ Forward log failed: {e}")
         

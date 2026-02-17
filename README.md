@@ -97,12 +97,20 @@ python scripts/market_sentiment.py
 
 ## 📖 Documentation
 
+### 🆕 Complete System Manual (V14.3)
+- **[COMPLETE_SYSTEM_MANUAL.md](COMPLETE_SYSTEM_MANUAL.md)** - ⭐ **คู่มือระบบฉบับสมบูรณ์** (แนะนำให้อ่านก่อน)
+  - Flow การทำงานแบบละเอียด
+  - คำสั่งทั้งหมด (Complete Command Reference)
+  - Risk Management Parameters
+  - Troubleshooting Guide
+
 ### User Manuals
 - **[User Manual](docs/USER_MANUAL.md)** - คู่มือระบบครบถ้วน (คำสั่งทั้งหมด)
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - คำสั่งที่ใช้บ่อย
 - **[Project Master Manual](docs/PROJECT_MASTER_MANUAL.md)** - คู่มือระบบฉบับสมบูรณ์
 - **[Forward Testing Guide](docs/FORECAST_VS_FORWARD_TESTING_ANALYSIS.md)** - คู่มือ Forward Testing
 - **[Multi-Market Schedule](docs/MULTI_MARKET_SCHEDULE.md)** - ตารางเวลารันระบบหลายตลาด
+- **[Risk Management Summary](RISK_MANAGEMENT_SUMMARY.md)** - Risk Management Parameters โดยประเทศ
 
 ### Key Commands
 

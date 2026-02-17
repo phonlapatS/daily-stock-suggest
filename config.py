@@ -16,6 +16,27 @@ TOP_MATCHES = 10          # Number of historical matches to analyze
 VOLATILITY_WINDOW = 20    # Rolling window for Volatility analysis
 
 # ==========================================
+# 2. Forecast Logging Thresholds (V6.0 - Configurable)
+# ==========================================
+# กำหนดเกณฑ์การบันทึก forecast สำหรับ forward testing
+# สามารถปรับได้ตามต้องการโดยไม่ต้องแก้ code
+
+# Minimum probability threshold for logging forecasts
+# - Prob > 50%: Log ทุก patterns ที่ prob > 50% (เก็บข้อมูลเยอะ)
+# - Prob >= 60%: Log เฉพาะ patterns ที่ prob >= 60% (คุณภาพสูง)
+MIN_PROB_THRESHOLD = 50.0  # Default: 50% (ตามเอกสาร Forecast/Monitor)
+
+# Minimum matches threshold (sample size)
+# - Matches >= 30: ใช้สำหรับหุ้นไทย (สถิติเพียงพอ)
+# - Matches >= 15: ใช้สำหรับหุ้นต่างประเทศ (ยืดหยุ่นกว่า)
+MIN_MATCHES_THRESHOLD = 30  # Default: 30 (ตามเอกสาร)
+
+# Tier classification (optional - for display only)
+# - Tier A: Prob >= 60% (high confidence)
+# - Tier B: Prob 50-59% (medium confidence)
+USE_TIER_CLASSIFICATION = True  # Enable tier A/B classification
+
+# ==========================================
 # 2. Asset Groups
 # ==========================================
 

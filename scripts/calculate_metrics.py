@@ -440,16 +440,16 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
         print_simple_table(super_elite, "[PASS] (Prob > 60% | RRR > 2.0 | Count > 50)")
 
     # ========================================
-    # THAI MARKET (Reversion -> Higher Frequency & Accuracy)
+    # THAI MARKET (V14.2: Strict Criteria - Prob > 60% AND RRR > 2.0)
     # ========================================
-    # Updated: RRR >= 1.5 (เพิ่มจาก 1.3 → 1.5 เพื่อเพิ่มคุณภาพ) - Prob >= 60% เท่าเดิม
+    # V14.2: ใช้เกณฑ์เข้มงวด Prob > 60% และ RRR > 2.0 เท่านั้น (ตามที่ user ระบุ)
     thai_trend = summary_df[
         (summary_df['Country'] == 'TH') & 
-        (summary_df['Prob%'] >= 60.0) & 
-        (summary_df['RR_Ratio'] >= 1.5) &
-        (summary_df['Count'] >= 30)  # Filter for statistical significance (High Freq)
+        (summary_df['Prob%'] > 60.0) &  # V14.2: เปลี่ยนจาก >= เป็น > (เข้มงวดขึ้น)
+        (summary_df['RR_Ratio'] > 2.0) &  # V14.2: เปลี่ยนจาก >= 1.5 เป็น > 2.0 (เข้มงวดขึ้น)
+        (summary_df['Count'] >= 5)  # V14.2: ลดจาก 30 เป็น 5 (ตามที่ user ระบุ)
     ].sort_values(by='Prob%', ascending=False)  # เรียงตาม Prob% จากมากไปน้อย (แสดงทั้งหมด)
-    print_market_section(thai_trend, "[THAI MARKET]", "Prob >= 60% | RRR >= 1.5 | Count >= 30")
+    print_market_section(thai_trend, "[THAI MARKET]", "Prob > 60% | RRR > 2.0 | Count >= 5")
 
     # ========================================
     # US STOCK (Trend -> Lower Frequency, High Impact)
@@ -464,29 +464,16 @@ def calculate_metrics(input_path='logs/trade_history.csv', output_path='data/sym
     print_market_section(us_trend, "[US STOCK]", "Prob >= 60% | RRR >= 1.5 | Count >= 15")
 
     # ========================================
-    # CHINA MARKET (V13.7: Optimize RRR + Realistic Prob%)
+    # CHINA MARKET (V14.2: Strict Criteria - Prob > 60% AND RRR > 2.0)
     # ========================================
-    # V13.7 Changes:
-    # - ใช้ Raw Prob% แทน Elite Prob% (เพื่อหลีกเลี่ยง overfitting/selection bias)
-    # - เพิ่ม Prob% threshold จาก 50% → 55% (กรองหุ้นที่มี Prob% สูงเกินไป - realistic)
-    # - RRR >= 1.0 (คงเดิม - ชนะได้กำไรมากกว่าขาดทุน)
-    # - Count >= 20 (คงเดิม - เพื่อความน่าเชื่อถือทางสถิติ)
-    # - Target: Realistic Win Rate (55-65%), RRR > 1.0, Count > 20
-    # 
-    # ข้อดี:
-    #   ✅ Raw Prob% = Win Rate จริง (ไม่มี selection bias)
-    #   ✅ Prob% threshold 55% (realistic - ไม่เวอร์เกินจริง)
-    #   ✅ หลีกเลี่ยง overfitting (ไม่เลือกเฉพาะ pattern ที่ชนะ)
-    #   ✅ ใช้ได้จริง (ไม่มี Elite Filter ใน real trading)
-    #   ✅ RRR > 1.0 (ชนะได้กำไรมากกว่าขาดทุน)
-    # ========================================
+    # V14.2: ใช้เกณฑ์เข้มงวด Prob > 60% และ RRR > 2.0 เท่านั้น (ตามที่ user ระบุ)
     china_trend = summary_df[
         ((summary_df['Country'] == 'CN') | (summary_df['Country'] == 'HK')) & 
-        (summary_df['Prob%'] >= 60.0) &  # V13.7: เพิ่มจาก 50% → 60% (กรองหุ้นที่มี Prob% สูงเกินไป - realistic)
-        (summary_df['RR_Ratio'] >= 1.2) &  # ลดจาก 1.5 → 1.2 เพื่อแสดงหุ้นเยอะขึ้น (แต่ยังคง Prob >= 60%)
-        (summary_df['Count'] >= 15)  # ลดจาก 20 → 15 เพื่อแสดงหุ้นเยอะขึ้น
+        (summary_df['Prob%'] > 60.0) &  # V14.2: เปลี่ยนจาก >= เป็น > (เข้มงวดขึ้น)
+        (summary_df['RR_Ratio'] > 2.0) &  # V14.2: เปลี่ยนจาก >= 1.2 เป็น > 2.0 (เข้มงวดขึ้น)
+        (summary_df['Count'] >= 5)  # V14.2: ลดจาก 15 เป็น 5 (ตามที่ user ระบุ)
     ].sort_values(by='Prob%', ascending=False)  # เรียงตาม Prob% จากมากไปน้อย (แสดงทั้งหมด)
-    print_market_section(china_trend, "[CHINA & HK MARKET]", "Prob >= 60% | RRR >= 1.2 | Count >= 15")
+    print_market_section(china_trend, "[CHINA & HK MARKET]", "Prob > 60% | RRR > 2.0 | Count >= 5")
 
     # ========================================
     # TAIWAN MARKET (V12.1: Quality over Quantity)
