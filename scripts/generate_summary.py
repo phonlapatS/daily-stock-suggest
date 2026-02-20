@@ -170,66 +170,104 @@ def main():
     vote_counts['N_Win_Rate%'] = (vote_counts['Predict_N'] / vote_counts['Total_Valid_Patterns'] * 100).round(1)
     
     # ──────────────────────────────────────────────────
-    # Step 9: Determine Final Stock Bias
+    # Step 9: Determine Final Stock Bias & Win Rate
     # ──────────────────────────────────────────────────
-    def determine_bias(row):
-        if row['P_Win_Rate%'] > row['N_Win_Rate%']:
-            return f"+ ({row['P_Win_Rate%']:.1f}%)"
-        elif row['N_Win_Rate%'] > row['P_Win_Rate%']:
-            return f"- ({row['N_Win_Rate%']:.1f}%)"
+    # ──────────────────────────────────────────────────
+    # Step 10: Final Data Preparation (Include ALL Stocks)
+    # ──────────────────────────────────────────────────
+    # Get list of all unique symbols/markets from original DF to ensure no one is left behind
+    all_stocks = df[['Symbol', 'Market']].drop_duplicates()
+    
+    # Merge voting results back to all_stocks
+    # Symbols with no valid votes (due to low count or tie) will have NaNs
+    final_df = pd.merge(all_stocks, vote_counts, on=['Symbol', 'Market'], how='left')
+    
+    # Fill NaNs
+    final_df['Predict_P'] = final_df['Predict_P'].fillna(0).astype(int)
+    final_df['Predict_N'] = final_df['Predict_N'].fillna(0).astype(int)
+    final_df['Total_Valid_Patterns'] = final_df['Total_Valid_Patterns'].fillna(0).astype(int)
+    
+    # Recalculate rates (handle divide by zero)
+    final_df['P_Win_Rate%'] = (final_df['Predict_P'] / final_df['Total_Valid_Patterns'] * 100).fillna(0).round(1)
+    final_df['N_Win_Rate%'] = (final_df['Predict_N'] / final_df['Total_Valid_Patterns'] * 100).fillna(0).round(1)
+
+    # Function to determine Bias with format "🟩 P (XX%)", "🟥 N (XX%)"
+    def determine_bias_final(row):
+        total_valid = row['Total_Valid_Patterns']
+        if total_valid == 0:
+            return "⬜ ." # Insufficient Data
+            
+        p_rate = row['P_Win_Rate%']
+        n_rate = row['N_Win_Rate%']
+        
+        if p_rate > n_rate:
+            return f"🟩 P ({int(round(p_rate))}%)"
+        elif n_rate > p_rate:
+            return f"🟥 N ({int(round(n_rate))}%)"
         else:
-            return "Neutral (50.0%)"
+            return f"⬜ = ({int(round(p_rate))}%)"
+
+    final_df['Bias'] = final_df.apply(determine_bias_final, axis=1)
+
+    # Rename for output
+    rename_map = {
+        'Total_Valid_Patterns': 'Valid Pattern',
+        'Predict_P': '+ Pattern',
+        'Predict_N': '- Pattern',
+    }
+    final_df = final_df.rename(columns=rename_map)
     
-    vote_counts['Summary_Result'] = vote_counts.apply(determine_bias, axis=1)
+    # Select Columns
+    output_cols = ['Symbol', 'Market', 'Valid Pattern', '+ Pattern', '- Pattern', 'Bias']
+    final_df = final_df[output_cols]
     
     # ──────────────────────────────────────────────────
-    # Step 10: Export
+    # Step 10.5: Map Symbols to Readable Names
     # ──────────────────────────────────────────────────
-    output_cols = ['Symbol', 'Market', 'Total_Valid_Patterns', 'Predict_P', 'Predict_N',
-                   'P_Win_Rate%', 'N_Win_Rate%', 'Summary_Result']
-    
-    result = vote_counts[output_cols].sort_values(['Market', 'Symbol']).reset_index(drop=True)
-    result.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
-    
-    # ──────────────────────────────────────────────────
-    # Display Results
-    # ──────────────────────────────────────────────────
-    print(f"\n{'=' * 70}")
-    print(f"📊 STOCK PREDICTION HISTORY SUMMARY")
-    print(f"{'=' * 70}")
-    
-    # Print by market
-    for market in sorted(result['Market'].unique()):
-        market_df = result[result['Market'] == market]
+    # Load mapping from config
+    try:
+        sys.path.append(PROJECT_DIR) # Ensure we can import config from root
+        import config
+        symbol_map = {}
+        for group in config.ASSET_GROUPS.values():
+            for asset in group['assets']:
+                if 'name' in asset:
+                    symbol_map[asset['symbol']] = asset['name']
         
-        # Count bias direction
-        pos_bias = market_df['Summary_Result'].str.startswith('+').sum()
-        neg_bias = market_df['Summary_Result'].str.startswith('-').sum()
-        neutral = market_df['Summary_Result'].str.startswith('Neutral').sum()
+        # Force Symbol to string to match config keys (which are strings like '700')
+        final_df['Symbol'] = final_df['Symbol'].astype(str)
         
-        print(f"\n{'─' * 60}")
-        print(f"🏷️  {market} ({len(market_df)} stocks) | +Bias:{pos_bias} | -Bias:{neg_bias} | Neutral:{neutral}")
-        print(f"{'─' * 60}")
-        print(f"  {'Symbol':12s} {'Patterns':>8s} {'Pred_+':>8s} {'Pred_-':>8s} {'+ Rate':>8s} {'- Rate':>8s}  {'Bias'}")
-        print(f"  {'─' * 65}")
+        # Apply mapping (if not found, keep original)
+        final_df['Symbol'] = final_df['Symbol'].map(symbol_map).fillna(final_df['Symbol'])
+        print(f"✅ Mapped {len(symbol_map)} symbols to readable names.")
+        
+    except ImportError:
+        print("⚠️ Could not import config.py. Skipping symbol mapping.")
+    
+    # Save to CSV
+    final_df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
+    print(f"\n💾 Saved summary to: {OUTPUT_FILE}")
+
+    # ──────────────────────────────────────────────────
+    # Step 11: Display Tables by Market
+    # ──────────────────────────────────────────────────
+    markets = sorted(final_df['Market'].unique())
+    
+    for market in markets:
+        market_df = final_df[final_df['Market'] == market].sort_values(by='Symbol')
+        
+        print(f"\n{'=' * 80}")
+        print(f"🌍 MARKET: {market} ({len(market_df)} stocks)")
+        print(f"{'=' * 80}")
+        print(f"{'Symbol':<12} {'Valid Pattern':<15} {'+ Pattern':<12} {'- Pattern':<12} {'Bias':<15}")
+        print("-" * 80)
         
         for _, row in market_df.iterrows():
-            print(f"  {row['Symbol']:12s} {row['Total_Valid_Patterns']:>8d} {row['Predict_P']:>8d} {row['Predict_N']:>8d} "
-                  f"{row['P_Win_Rate%']:>7.1f}% {row['N_Win_Rate%']:>7.1f}%  {row['Summary_Result']}")
-    
-    # Overall summary
-    total_pos = result['Summary_Result'].str.startswith('+').sum()
-    total_neg = result['Summary_Result'].str.startswith('-').sum()
-    total_neutral = result['Summary_Result'].str.startswith('Neutral').sum()
-    
-    print(f"\n{'=' * 70}")
-    print(f"📈 OVERALL: {len(result)} stocks analyzed")
-    print(f"   + Bias: {total_pos} stocks")
-    print(f"   - Bias: {total_neg} stocks")
-    print(f"   Neutral: {total_neutral} stocks")
-    print(f"\n   💾 Saved: {OUTPUT_FILE}")
-    print(f"{'=' * 70}")
+            print(f"{row['Symbol']:<12} {row['Valid Pattern']:<15} {row['+ Pattern']:<12} {row['- Pattern']:<12} {row['Bias']:<15}")
+        
+        print("-" * 80)
 
+    print(f"\n✅ Report Generated Successfully.")
 
 if __name__ == '__main__':
     main()

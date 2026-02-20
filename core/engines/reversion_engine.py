@@ -49,16 +49,26 @@ class MeanReversionEngine(BasePatternEngine):
             if not pat_str or len(pat_str) < self.min_len:
                 continue
             
-            # STRATEGIC BIAS: Mean Reversion (Fade the move)
-            # + (Up anomaly) -> SHORT (expect reversion down)
-            # - (Down anomaly) -> LONG (expect reversion up)
-            last_char = pat_str[-1]
-            if last_char == '+':
-                direction = "SHORT"
-            elif last_char == '-':
-                direction = "LONG"
-            else:
+            # 4. DATA-DRIVEN VALIDATION (Dynamic Direction)
+            # Compare LONG vs SHORT performance
+            future_returns = self.get_pattern_stats(close, pct_change, effective_std, pat_str, length)
+            if not future_returns:
                 continue
+            
+            # Test both directions
+            stats_long = self.calculate_stats(future_returns, "LONG")
+            stats_short = self.calculate_stats(future_returns, "SHORT")
+            
+            # Select winner
+            if stats_long['win_rate'] >= stats_short['win_rate']:
+                direction = "LONG"
+                stats = stats_long
+            else:
+                direction = "SHORT"
+                stats = stats_short
+                
+            # Filter Loop Continue equivalent (previously continued if loop didn't match)
+            # Now we always have a direction, so we proceed to filtering.
                 
             # 3. MARKET-SPECIFIC FILTERS (No RSI — only structural filters)
             filter_tags = []
@@ -74,12 +84,7 @@ class MeanReversionEngine(BasePatternEngine):
                 if direction == "LONG" and close.iloc[-1] < sma50.iloc[-1]:
                     continue
                 
-            # 4. DATA-DRIVEN VALIDATION (Historical Pattern Stats)
-            future_returns = self.get_pattern_stats(close, pct_change, effective_std, pat_str, length)
-            if not future_returns:
-                continue
-            
-            stats = self.calculate_stats(future_returns, direction)
+            # (Stats already calculated above in Dynamic step)
             
             # 5. QUALITY FLAG (V5.2: Late Filtering)
             # -------------------------------------------------------

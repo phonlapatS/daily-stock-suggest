@@ -101,7 +101,25 @@ def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_t
                 'total_bars': len(df)
             })
             
-        return formatted_results
+        # ---------------------------------------------------------
+        # V8.0: ANTI-OVERLAPPING (Best Fit Selection)
+        # ---------------------------------------------------------
+        # User Req: Select ONLY ONE pattern per symbol (The most confident one)
+        # Logic: 
+        # 1. Sort by Probability (Confidence) DESC
+        # 2. Sort by Pattern Length DESC (Tie-breaker)
+        # 3. Return top 1
+        
+        if not formatted_results:
+            return []
+            
+        # Sort: Acc Score (Prob) DESC, Pattern Length DESC
+        formatted_results.sort(key=lambda x: (-x['acc_score'], -len(x['pattern'])))
+        
+        # Select Top 1
+        best_fit = [formatted_results[0]]
+        
+        return best_fit
 
     except Exception as e:
         print(f"❌ Error in modular analysis for {symbol}: {e}")

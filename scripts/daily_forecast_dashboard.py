@@ -63,7 +63,7 @@ def get_accuracy_report():
         correct = symbol_data['correct'].sum()
         accuracy = (correct / total) * 100 if total > 0 else 0
         
-        # นับ Win/Loss แบบ count-based (ตาม mentor: นับครั้งที่ชนะ/แพ้ เฉยๆ)
+        # นับ Win/Loss แบบ count-based
         win_count = int(correct)
         loss_count = int(total - correct)
         
@@ -90,8 +90,8 @@ def get_accuracy_report():
     return pd.DataFrame(accuracy_data)
 
 def format_number(num):
-    """จัดรูปแบบตัวเลของ"""
-    if pd.isna(num) or num == 0:
+    """จัดรูปแบบตัวเลข"""
+    if pd.isna(num):
         return "0.00%"
     return f"{num:+.2f}%"
 

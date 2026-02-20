@@ -169,7 +169,18 @@ ASSET_GROUPS = {
             {'symbol': '1211', 'exchange': 'HKEX', 'name': 'BYD'},
             {'symbol': '2015', 'exchange': 'HKEX', 'name': 'LI-AUTO'},
             {'symbol': '9868', 'exchange': 'HKEX', 'name': 'XPENG'},
-            {'symbol': '9866', 'exchange': 'HKEX', 'name': 'NIO'}
+            {'symbol': '9866', 'exchange': 'HKEX', 'name': 'NIO'},
+            # Expansion (V4.5)
+            {'symbol': '0981', 'exchange': 'HKEX', 'name': 'SMIC'},
+            {'symbol': '1024', 'exchange': 'HKEX', 'name': 'KUAISHOU'},
+            {'symbol': '9999', 'exchange': 'HKEX', 'name': 'NETEASE'},
+            {'symbol': '0992', 'exchange': 'HKEX', 'name': 'LENOVO'},
+            {'symbol': '2382', 'exchange': 'HKEX', 'name': 'SUNNY-OPT'},
+            {'symbol': '6618', 'exchange': 'HKEX', 'name': 'JD-HEALTH'},
+            {'symbol': '0241', 'exchange': 'HKEX', 'name': 'ALI-HEALTH'},
+            {'symbol': '0762', 'exchange': 'HKEX', 'name': 'CHINA-UNICOM'},
+            {'symbol': '0941', 'exchange': 'HKEX', 'name': 'CHINA-MOBILE'},
+            {'symbol': '0883', 'exchange': 'HKEX', 'name': 'CNOOC'}
         ],
         "fixed_threshold": None, 
         "engine": "MEAN_REVERSION", # V4.4: Switched from TREND to REVERSION (data-driven)

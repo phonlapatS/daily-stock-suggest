@@ -102,11 +102,16 @@ def load_master_stats():
         lookup[row['Symbol']].append({
             'pattern': row['Pattern'],
             'count': row['Count'],
-            'category': row['Category'],
-            'pattern_name': row['Pattern_Name'],
-            'bars': row['Bars'],
-            'max_streak_pos': row['Max_Streak_Pos'],
-            'max_streak_neg': row['Max_Streak_Neg'],
+            'category': row.get('Category', 'Unknown'),
+            'pattern_name': row.get('Pattern_Name', 'Unknown'),
+            'bars': row.get('Bars', 0),
+            'max_streak_pos': row.get('Max_Streak_Pos', 0),
+            'max_streak_neg': row.get('Max_Streak_Neg', 0),
+            # New Stats (V8.0 Pure Stats)
+            'next_up': row.get('Next_Up', 0),
+            'next_down': row.get('Next_Down', 0),
+            'next_neutral': row.get('Next_Neutral', 0),
+            'reliability': row.get('Reliability', 0.0)
         })
 
     return lookup
@@ -152,26 +157,24 @@ def get_active_pattern(pct_change, effective_std, end_idx, max_length=7):
 
 def select_best_fit(active_pattern, symbol_stats, min_count=3):
     """
-    Best Fit Selection (V7.2 — Hybrid Approach):
-    ลอง sub-patterns จาก active pattern (ยาวสุด → สั้นสุด)
+    Best Fit Selection (V8.0 — Highest Probability):
+    System generates all valid sub-patterns from the active pattern (longest -> shortest).
+    It checks Master Stats for each.
     
-    Hybrid: Longest Context First + Confidence Tie-breaker
-    - min_count:    Bare minimum to be considered
-    - STRONG_COUNT: High confidence threshold (50)
-    - MIN_PROB_GATE: 55% minimum for marginal-only fallback
+    Selection Criteria:
+    1. Count >= min_count (Screening)
+    2. Highest 'Reliability' (Probability)
+    3. Tie-breaker: Longest Pattern
     """
     if not active_pattern or not symbol_stats:
         return None
 
-    STRONG_COUNT = 50   # High confidence threshold
-    MIN_PROB_GATE = 55.0  # Not used directly here (count-based only from master stats)
-    
-    # Build lookup for this symbol
+    # Build lookup
     stats_lookup = {s['pattern']: s for s in symbol_stats}
+    
+    candidates = []
 
-    fallback_candidate = None
-
-    # Evaluate sub-patterns: longest → shortest
+    # Collect all valid candidates
     for length in range(len(active_pattern), 0, -1):
         sub = active_pattern[-length:]
         if sub not in stats_lookup:
@@ -179,48 +182,62 @@ def select_best_fit(active_pattern, symbol_stats, min_count=3):
         
         info = stats_lookup[sub]
         
+        # 1. Screen by Count
         if info['count'] < min_count:
             continue
-        
-        # Marginal Case (min_count ≤ Count < STRONG_COUNT)
-        if info['count'] < STRONG_COUNT:
-            if fallback_candidate is None:
-                fallback_candidate = info
-            continue
-        
-        # Strong Case (Count ≥ STRONG_COUNT)
-        if fallback_candidate is None:
-            # Longest valid + strong → return immediately
-            return info
+            
+        # 2. Calculate Reliability (if not present, estimate)
+        # Use 'reliability' from CSV if available, else calc from Next_Up/Next_Down
+        if 'reliability' in info and info['reliability'] > 0:
+            prob = info['reliability']
         else:
-            # Compare: shorter strong vs longer marginal
-            # Use count as proxy for quality (master stats doesn't have win_rate directly)
-            # Prefer longer fallback only if it has decent count
-            if info['count'] >= fallback_candidate['count']:
-                return info
+            # Fallback calc
+            total = info.get('next_up', 0) + info.get('next_down', 0) + info.get('next_neutral', 0)
+            if total > 0:
+                # Reliability = Max(Up, Down) / Total
+                prob = max(info.get('next_up', 0), info.get('next_down', 0)) / total * 100
             else:
-                return fallback_candidate
-
-    # End of loop: return fallback if exists
-    if fallback_candidate:
-        return fallback_candidate
+                prob = 0
+        
+        candidates.append({
+            'pattern': sub,
+            'info': info,
+            'prob': prob,
+            'length': length
+        })
     
-    return None
+    if not candidates:
+        return None
+        
+    # Sort Candidates:
+    # 1. Probability (Descending)
+    # 2. Length (Descending) - Tie-breaker
+    candidates.sort(key=lambda x: (-x['prob'], -x['length']))
+    
+    # Return best candidate's stats
+    return candidates[0]['info']
 
 
-def determine_forecast(pattern, direction_logic):
-    """กำหนดทิศทางจาก pattern ตาม logic ของตลาด"""
-    if not pattern:
+def determine_forecast(pattern_stats):
+    """
+    Determine direction from Master Stats (Pure Stats Logic)
+    Case 1: Up > Down -> Forecast UP
+    Case 2: Down > Up -> Forecast DOWN
+    Case 3: Equal -> NEUTRAL (No trade)
+    """
+    if not pattern_stats:
         return None
 
-    last_char = pattern[-1]
-
-    if direction_logic == 'reversion':
-        # Mean Reversion: + → DOWN (กลับทิศ), - → UP
-        return 'DOWN' if last_char == '+' else 'UP'
-    else:
-        # Trend Following: + → UP (ตาม trend), - → DOWN
-        return 'UP' if last_char == '+' else 'DOWN'
+    n_up = pattern_stats.get('next_up', 0)
+    n_down = pattern_stats.get('next_down', 0)
+    
+    # Simple Majority Vote
+    if n_up > n_down:
+        return 'UP'
+    elif n_down > n_up:
+        return 'DOWN'
+    
+    return None # Neutral or Zero
 
 
 def main():
@@ -342,8 +359,8 @@ def main():
                     if not best_fit:
                         continue  # ไม่เจอ pattern ที่มี count เพียงพอ
 
-                    # 3. Determine forecast direction
-                    forecast = determine_forecast(best_fit['pattern'], direction_logic)
+                    # 3. Determine forecast direction (Pure Stats)
+                    forecast = determine_forecast(best_fit)
                     if not forecast:
                         continue
 
