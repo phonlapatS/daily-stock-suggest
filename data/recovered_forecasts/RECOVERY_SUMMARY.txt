@@ -1,0 +1,20 @@
+Forecast Recovery Summary
+========================================
+
+Recovered dates: 2026-02-12, 2026-02-13, 2026-02-16, 2026-02-17
+Total forecasts recovered: 548
+Average per date: 137
+
+Files created:
+  forecast_2026-02-12.csv
+  performance_log_2026-02-12.csv
+  summary_2026-02-12.txt
+  forecast_2026-02-13.csv
+  performance_log_2026-02-13.csv
+  summary_2026-02-13.txt
+  forecast_2026-02-16.csv
+  performance_log_2026-02-16.csv
+  summary_2026-02-16.txt
+  forecast_2026-02-17.csv
+  performance_log_2026-02-17.csv
+  summary_2026-02-17.txt

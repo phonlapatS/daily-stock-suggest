@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-generate_summary.py — Stock-Level Summary via N+1 Prediction Voting
+generate_summary.py — Stock-Level Summary via N+1 Prediction Bias
 ====================================================================
-อ่าน Master_Pattern_Stats_NewLogic.csv แล้วสร้าง Summary ว่าหุ้นแต่ละตัว
-มี "ทิศทางเชิงประวัติศาสตร์" (Historical Directional Bias) เป็น + หรือ -
+Updates:
+- Implements "Sum of Winning Frequencies" logic (User Request).
+- Instead of 1-pattern-1-vote, we sum the actual occurrences involved in the winning side.
+- Filter: Base Pattern Total Count >= 30.
 
-หลักการ N+1 Voting:
-  1. Pattern "+-+" (Length=3) → Base="+-", Outcome="+"
-     หมายความว่า: "ถ้าเจอ +- แล้ว วันถัดไป(N+1) ขึ้น(+)"
-  
-  2. รวม count ของ Outcome + กับ - สำหรับแต่ละ Base Pattern
-     ตัวไหน count สูงกว่า = Vote ของ Base นั้น
-  
-  3. นับ Vote ทั้งหมดต่อหุ้น → สรุปว่า + หรือ - ชนะ
-
-Usage:
-  python scripts/generate_summary.py
+Methodology:
+1. For each Base Pattern (e.g. "++-"), compare P_Count (+) vs N_Count (-).
+2. Determine Winner:
+   - If P > N: Winning_P = P_Count
+   - If N > P: Winning_N = N_Count
+   - Tie: 0
+3. Sum these winning counts per Symbol.
+   - Sum_Winning_P = Sum(Winning_P of all valid patterns)
+   - Sum_Winning_N = Sum(Winning_N of all valid patterns)
+4. Calculate Bias % based on these sums.
 """
 
 import sys
@@ -43,9 +44,10 @@ MIN_BASE_COUNT = 30
 
 
 def main():
-    print("=" * 70)
-    print("📊 N+1 PREDICTION VOTING — Stock-Level Summary Generator")
-    print("=" * 70)
+    print("=" * 80)
+    print("📊 N+1 PREDICTION BIAS — Stock-Level Summary Generator")
+    print("   Logic: Sum of Winning Frequencies")
+    print("=" * 80)
     
     # ──────────────────────────────────────────────────
     # Step 1: Load Data
@@ -57,34 +59,20 @@ def main():
     df = pd.read_csv(MASTER_STATS_FILE)
     print(f"\n📂 Loaded: {MASTER_STATS_FILE}")
     print(f"   Total rows: {len(df):,}")
-    print(f"   Unique symbols: {df['Symbol'].nunique()}")
-    print(f"   Markets: {', '.join(df['Market'].unique())}")
     
     # ──────────────────────────────────────────────────
-    # Step 2: Filter valid lengths (Length >= 2)
-    # Pattern must have at least 2 chars to extract Base + Outcome
-    # e.g., "++" → Base="+", Outcome="+"
-    # Single-char patterns like "+" have no predictive base
+    # Step 2: Filter valid lengths & Extract Base/Outcome
     # ──────────────────────────────────────────────────
+    # Only Length >= 2 can supply a history base
     df_valid = df[df['Length'] >= 2].copy()
-    print(f"\n🔍 After filtering Length >= 2: {len(df_valid):,} rows")
+    
+    df_valid['Base_Pattern'] = df_valid['Pattern'].str[:-1]
+    df_valid['Outcome'] = df_valid['Pattern'].str[-1]
+    
+    print(f"🔍 Filtered Length >= 2: {len(df_valid):,} rows")
     
     # ──────────────────────────────────────────────────
-    # Step 3: Extract Base Pattern & Outcome
-    # Pattern "+-+" → Base_Pattern = "+-", Outcome = "+"
-    # This represents: "After seeing '+-', the N+1 day was '+'"
-    # ──────────────────────────────────────────────────
-    df_valid['Base_Pattern'] = df_valid['Pattern'].str[:-1]   # ทุกตัวยกเว้นตัวสุดท้าย
-    df_valid['Outcome'] = df_valid['Pattern'].str[-1]          # ตัวสุดท้าย (+ or -)
-    
-    print(f"   Extracted Base_Pattern + Outcome")
-    print(f"   Sample: Pattern='{df_valid.iloc[0]['Pattern']}' → Base='{df_valid.iloc[0]['Base_Pattern']}', Outcome='{df_valid.iloc[0]['Outcome']}'")
-    
-    # ──────────────────────────────────────────────────
-    # Step 4: Group and Pivot — Count + vs - outcomes per Base
-    # For each (Symbol, Base_Pattern):
-    #   P_Count = how many times Outcome was "+"
-    #   N_Count = how many times Outcome was "-"
+    # Step 3: Group & Pivot
     # ──────────────────────────────────────────────────
     pivot = df_valid.pivot_table(
         index=['Symbol', 'Market', 'Base_Pattern'],
@@ -94,17 +82,14 @@ def main():
         fill_value=0
     ).reset_index()
     
-    # Ensure both + and - columns exist
-    if '+' not in pivot.columns:
-        pivot['+'] = 0
-    if '-' not in pivot.columns:
-        pivot['-'] = 0
+    # Ensure columns exist
+    if '+' not in pivot.columns: pivot['+'] = 0
+    if '-' not in pivot.columns: pivot['-'] = 0
     
     pivot = pivot.rename(columns={'+': 'P_Count', '-': 'N_Count'})
     
     # ──────────────────────────────────────────────────
-    # Step 5: Apply Strict Threshold (Total_Base_Count >= 30)
-    # Only keep Base Patterns with enough data to be statistically meaningful
+    # Step 4: Apply Threshold & Determine Winning Frequency
     # ──────────────────────────────────────────────────
     pivot['Total_Base_Count'] = pivot['P_Count'] + pivot['N_Count']
     
@@ -112,121 +97,40 @@ def main():
     pivot_valid = pivot[pivot['Total_Base_Count'] >= MIN_BASE_COUNT].copy()
     after_filter = len(pivot_valid)
     
-    print(f"\n📋 Base Patterns before threshold: {before_filter:,}")
-    print(f"   After Count >= {MIN_BASE_COUNT} filter: {after_filter:,}")
-    print(f"   Dropped: {before_filter - after_filter:,} (insufficient data)")
+    print(f"📋 Base Patterns Valid (Count >= {MIN_BASE_COUNT}): {after_filter:,} / {before_filter:,}")
     
-    # ──────────────────────────────────────────────────
-    # Step 6: Determine the Base Pattern Winner (Vote)
-    # For each Base Pattern:
-    #   P_Count > N_Count → vote "+"
-    #   N_Count > P_Count → vote "-"
-    #   Tied → discard (no clear edge)
-    # ──────────────────────────────────────────────────
-    def determine_vote(row):
-        if row['P_Count'] > row['N_Count']:
-            return '+'
-        elif row['N_Count'] > row['P_Count']:
-            return '-'
-        else:
-            return None  # Tied → discard
-    
-    pivot_valid['Vote'] = pivot_valid.apply(determine_vote, axis=1)
-    
-    # Remove ties
-    tied = pivot_valid['Vote'].isna().sum()
-    pivot_voted = pivot_valid.dropna(subset=['Vote']).copy()
-    
-    print(f"\n🗳️  Voting Results:")
-    print(f"   Valid votes: {len(pivot_voted):,}")
-    print(f"   Tied (discarded): {tied:,}")
-    
-    # Show some examples
-    print(f"\n   --- Sample votes (first 10) ---")
-    for _, row in pivot_voted.head(10).iterrows():
-        winner = row['Vote']
-        p, n = int(row['P_Count']), int(row['N_Count'])
-        print(f"   {row['Symbol']:12s} Base='{row['Base_Pattern']:6s}' → +:{p:>4d} vs -:{n:>4d} → Vote: {winner}")
-    
-    # ──────────────────────────────────────────────────
-    # Step 7: Tally Votes per Stock
-    # Count how many Base Patterns voted + vs - per Symbol
-    # ──────────────────────────────────────────────────
-    vote_counts = pivot_voted.groupby(['Symbol', 'Market', 'Vote']).size().unstack(fill_value=0).reset_index()
-    
-    # Ensure both columns exist
-    if '+' not in vote_counts.columns:
-        vote_counts['+'] = 0
-    if '-' not in vote_counts.columns:
-        vote_counts['-'] = 0
-    
-    vote_counts = vote_counts.rename(columns={'+': 'Predict_P', '-': 'Predict_N'})
-    
-    # ──────────────────────────────────────────────────
-    # Step 8: Calculate Summary Percentages
-    # ──────────────────────────────────────────────────
-    vote_counts['Total_Valid_Patterns'] = vote_counts['Predict_P'] + vote_counts['Predict_N']
-    vote_counts['P_Win_Rate%'] = (vote_counts['Predict_P'] / vote_counts['Total_Valid_Patterns'] * 100).round(1)
-    vote_counts['N_Win_Rate%'] = (vote_counts['Predict_N'] / vote_counts['Total_Valid_Patterns'] * 100).round(1)
-    
-    # ──────────────────────────────────────────────────
-    # Step 9: Determine Final Stock Bias & Win Rate
-    # ──────────────────────────────────────────────────
-    # ──────────────────────────────────────────────────
-    # Step 10: Final Data Preparation (Include ALL Stocks)
-    # ──────────────────────────────────────────────────
-    # Get list of all unique symbols/markets from original DF to ensure no one is left behind
-    all_stocks = df[['Symbol', 'Market']].drop_duplicates()
-    
-    # Merge voting results back to all_stocks
-    # Symbols with no valid votes (due to low count or tie) will have NaNs
-    final_df = pd.merge(all_stocks, vote_counts, on=['Symbol', 'Market'], how='left')
-    
-    # Fill NaNs
-    final_df['Predict_P'] = final_df['Predict_P'].fillna(0).astype(int)
-    final_df['Predict_N'] = final_df['Predict_N'].fillna(0).astype(int)
-    final_df['Total_Valid_Patterns'] = final_df['Total_Valid_Patterns'].fillna(0).astype(int)
-    
-    # Recalculate rates (handle divide by zero)
-    final_df['P_Win_Rate%'] = (final_df['Predict_P'] / final_df['Total_Valid_Patterns'] * 100).fillna(0).round(1)
-    final_df['N_Win_Rate%'] = (final_df['Predict_N'] / final_df['Total_Valid_Patterns'] * 100).fillna(0).round(1)
-
-    # Function to determine Bias with format "🟩 P (XX%)", "🟥 N (XX%)"
-    def determine_bias_final(row):
-        total_valid = row['Total_Valid_Patterns']
-        if total_valid == 0:
-            return "⬜ ." # Insufficient Data
-            
-        p_rate = row['P_Win_Rate%']
-        n_rate = row['N_Win_Rate%']
+    # Logic: Winning Frequency
+    def get_winning_counts(row):
+        p, n = row['P_Count'], row['N_Count']
+        win_p, win_n = 0, 0
         
-        if p_rate > n_rate:
-            return f"🟩 P ({int(round(p_rate))}%)"
-        elif n_rate > p_rate:
-            return f"🟥 N ({int(round(n_rate))}%)"
-        else:
-            return f"⬜ = ({int(round(p_rate))}%)"
+        if p > n:
+            win_p = p  # Add full P count to P bucket
+        elif n > p:
+            win_n = n  # Add full N count to N bucket
+        # Ties contribute 0 to both
+            
+        return pd.Series([win_p, win_n, 1])
 
-    final_df['Bias'] = final_df.apply(determine_bias_final, axis=1)
-
-    # Rename for output
-    rename_map = {
-        'Total_Valid_Patterns': 'Valid Pattern',
-        'Predict_P': '+ Pattern',
-        'Predict_N': '- Pattern',
-    }
-    final_df = final_df.rename(columns=rename_map)
-    
-    # Select Columns
-    output_cols = ['Symbol', 'Market', 'Valid Pattern', '+ Pattern', '- Pattern', 'Bias']
-    final_df = final_df[output_cols]
+    pivot_valid[['Winning_P', 'Winning_N', 'Valid_Flag']] = pivot_valid.apply(get_winning_counts, axis=1)
     
     # ──────────────────────────────────────────────────
-    # Step 10.5: Map Symbols to Readable Names
+    # Step 5: Aggregate at Symbol Level
     # ──────────────────────────────────────────────────
-    # Load mapping from config
+    symbol_stats = pivot_valid.groupby(['Symbol', 'Market']).agg({
+        'Winning_P': 'sum',
+        'Winning_N': 'sum',
+        'Valid_Flag': 'sum'
+    }).reset_index()
+    
+    symbol_stats = symbol_stats.rename(columns={'Valid_Flag': 'Valid_Patterns'})
+    
+    # ──────────────────────────────────────────────────
+    # Step 6: Map Readable Names (Optional)
+    # ──────────────────────────────────────────────────
+    # Attempt to load config for names
     try:
-        sys.path.append(PROJECT_DIR) # Ensure we can import config from root
+        sys.path.append(PROJECT_DIR)
         import config
         symbol_map = {}
         for group in config.ASSET_GROUPS.values():
@@ -234,40 +138,67 @@ def main():
                 if 'name' in asset:
                     symbol_map[asset['symbol']] = asset['name']
         
-        # Force Symbol to string to match config keys (which are strings like '700')
-        final_df['Symbol'] = final_df['Symbol'].astype(str)
+        # Apply Mapping
+        symbol_stats['Display_Symbol'] = symbol_stats['Symbol'].astype(str).map(symbol_map).fillna(symbol_stats['Symbol'])
         
-        # Apply mapping (if not found, keep original)
-        final_df['Symbol'] = final_df['Symbol'].map(symbol_map).fillna(final_df['Symbol'])
-        print(f"✅ Mapped {len(symbol_map)} symbols to readable names.")
-        
-    except ImportError:
-        print("⚠️ Could not import config.py. Skipping symbol mapping.")
-    
-    # Save to CSV
-    final_df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
-    print(f"\n💾 Saved summary to: {OUTPUT_FILE}")
+    except:
+        symbol_stats['Display_Symbol'] = symbol_stats['Symbol']
 
     # ──────────────────────────────────────────────────
-    # Step 11: Display Tables by Market
+    # Step 7: Calculate Bias %
     # ──────────────────────────────────────────────────
-    markets = sorted(final_df['Market'].unique())
+    symbol_stats['Total_Wins'] = symbol_stats['Winning_P'] + symbol_stats['Winning_N']
     
-    for market in markets:
-        market_df = final_df[final_df['Market'] == market].sort_values(by='Symbol')
+    # Avoid div by zero
+    symbol_stats['Pct_P'] = np.where(symbol_stats['Total_Wins'] > 0, 
+                                     (symbol_stats['Winning_P'] / symbol_stats['Total_Wins'] * 100), 0)
+    symbol_stats['Pct_N'] = np.where(symbol_stats['Total_Wins'] > 0, 
+                                     (symbol_stats['Winning_N'] / symbol_stats['Total_Wins'] * 100), 0)
+    
+    def determine_bias_str(row):
+        if row['Total_Wins'] == 0:
+            return "⬜ Neutral"
         
-        print(f"\n{'=' * 80}")
-        print(f"🌍 MARKET: {market} ({len(market_df)} stocks)")
-        print(f"{'=' * 80}")
-        print(f"{'Symbol':<12} {'Valid Pattern':<15} {'+ Pattern':<12} {'- Pattern':<12} {'Bias':<15}")
-        print("-" * 80)
-        
-        for _, row in market_df.iterrows():
-            print(f"{row['Symbol']:<12} {row['Valid Pattern']:<15} {row['+ Pattern']:<12} {row['- Pattern']:<12} {row['Bias']:<15}")
-        
-        print("-" * 80)
+        if row['Pct_P'] > row['Pct_N']:
+            return f"🟩 + ({row['Pct_P']:.1f}%)"
+        elif row['Pct_N'] > row['Pct_P']:
+            return f"🟥 - ({row['Pct_N']:.1f}%)"
+        else:
+            return "⬜ Neutral"
+            
+    symbol_stats['Bias'] = symbol_stats.apply(determine_bias_str, axis=1)
+    
+    # Sorting for Display
+    # Sort by Bias Group (+ first, then -), then by Strength%, then by Count
+    symbol_stats['Sort_Key'] = symbol_stats['Pct_P']  # High P% = top, Low P% (High N%) = bottom
+    symbol_stats = symbol_stats.sort_values(by=['Sort_Key', 'Valid_Patterns'], ascending=[False, False])
+    
+    # ──────────────────────────────────────────────────
+    # Step 8: Final Output & Save
+    # ──────────────────────────────────────────────────
+    output_df = symbol_stats[[
+        'Display_Symbol', 'Market', 'Valid_Patterns', 'Winning_P', 'Winning_N', 'Bias'
+    ]].rename(columns={
+        'Display_Symbol': 'Symbol',
+        'Winning_P': 'Sum_Winning_+',
+        'Winning_N': 'Sum_Winning_-'
+    })
+    
+    output_df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
+    print(f"\n💾 Saved Summary to: {OUTPUT_FILE}")
+    
+    # Display
+    markets = sorted(output_df['Market'].unique())
+    for m in markets:
+        m_df = output_df[output_df['Market'] == m]
+        print(f"\n🌍 MARKET: {m} ({len(m_df)} stocks)")
+        print("-" * 95)
+        print(f"{'Symbol':<15} {'Patterns':<10} {'Sum(+)':<10} {'Sum(-)':<10} {'Bias (Strength)':<20}")
+        print("-" * 95)
+        for _, row in m_df.iterrows():
+            print(f"{row['Symbol']:<15} {row['Valid_Patterns']:<10} {int(row['Sum_Winning_+']):<10} {int(row['Sum_Winning_-']):<10} {row['Bias']:<20}")
+    
+    print("\n✅ Report Complete.")
 
-    print(f"\n✅ Report Generated Successfully.")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

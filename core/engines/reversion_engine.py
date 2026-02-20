@@ -16,9 +16,14 @@ class MeanReversionEngine(BasePatternEngine):
         if df is None or len(df) < 50:
             return []
             
+        open_price = df['open']
         close = df['close']
         volume = df['volume']
-        pct_change = close.pct_change()
+        
+        # STRICT INTRADAY LOGIC: (Close - Open) / Open
+        # Measures "Candle Body Strength" (Who won the day?)
+        pct_change = ((close - open_price) / open_price)
+        
         exchange = settings.get('exchange', '').upper()
         
         # Market Detection
@@ -51,7 +56,41 @@ class MeanReversionEngine(BasePatternEngine):
             
             # 4. DATA-DRIVEN VALIDATION (Dynamic Direction)
             # Compare LONG vs SHORT performance
-            future_returns = self.get_pattern_stats(close, pct_change, effective_std, pat_str, length)
+            # Note: get_pattern_stats needs open price for future return calc
+            # But get_pattern_stats signature expects prices, pct_change...
+            # We need to ensure get_pattern_stats uses Intraday Return for Future Profit too!
+            
+            # Since get_pattern_stats is in base_engine (or overridden?), let's check.
+            # BaseEngine.get_pattern_stats typically uses (price[i+1]-price[i])/price[i].
+            # We need to Override it or pass a specialized price series?
+            # Actually, let's look at BasePatternEngine.get_pattern_stats.
+            
+            # For now, let's pass a 'prices' argument that helps calculate Intraday Return?
+            # No, standard prices are close.
+            
+            # If we want N+1 Intraday Return, we need Open and Close of N+1.
+            # BasePatternEngine.get_pattern_stats might not support this directly if it only takes 'prices'.
+            
+            # Solution: We should override get_pattern_stats in this engine or modify base?
+            # Or simpler: Is 'pct_change' series enough?
+            # BasePatternEngine.get_pattern_stats logic:
+            # next_ret = (prices.iloc[abs_idx + 1] - prices.iloc[abs_idx]) / prices.iloc[abs_idx]
+            # This is Inter-day! 
+            
+            # CRITICAL: We need to pass a "Future Return Series" to get_pattern_stats instead of raw prices.
+            # But get_pattern_stats calculates it internally.
+            
+            # WAITING: Check BasePatternEngine first?
+            # Assuming I can't see base right now.
+            # Let's Implement a local get_pattern_stats if needed.
+            
+            # Actually, we can pass "Open" and "Close" to a modified get_pattern_stats?
+            # Or... we can cheat. 
+            # If we pass 'prices' as a list of objects? No.
+            
+            # Let's stick to updating the CALL first.
+            future_returns = self.get_pattern_stats_intraday(df, pct_change, effective_std, pat_str, length)
+            
             if not future_returns:
                 continue
             
@@ -123,3 +162,70 @@ class MeanReversionEngine(BasePatternEngine):
             })
             
         return results
+
+    def get_pattern_stats_intraday(self, df, pct_change, effective_std, pattern_str, length):
+        """
+        Custom Intraday version of get_pattern_stats.
+        Calculates Profit based on (NextClose - NextOpen)/NextOpen
+        """
+        n = len(pct_change)
+        future_returns = []
+        
+        # Prepare arrays
+        pct_arr = pct_change.values
+        thresh_arr = effective_std.values
+        open_arr = df['open'].values
+        close_arr = df['close'].values
+        
+        # Step 1: Build full signal series
+        signals = []
+        for i in range(n):
+            ret = pct_arr[i]
+            thresh = thresh_arr[i]
+            
+            if np.isnan(ret) or np.isnan(thresh):
+                signals.append('.')
+            elif ret > thresh:
+                signals.append('+')
+            elif ret < -thresh:
+                signals.append('-')
+            else:
+                signals.append('.')  # Neutral
+        
+        # Step 2: Scan streaks
+        # Match base_engine logic (Start at min scan index)
+        start_idx = math.ceil(max(50, length)) # Ensure enough history
+        # Correct import
+        import math
+        start_idx = 252 # Use standard warmup
+        
+        # Naive Loop for exact match (Simpler than streak logic for this override, or copy streak logic?)
+        # Let's copy the strict logic from base_engine to be safe, but simplified for exact pattern match
+        
+        # We need to find ALL occurrences of pattern_str
+        # A simple sliding window is easiest and correct for Exact Match
+        
+        target_len = len(pattern_str)
+        
+        for i in range(start_idx, n - 1): # -1 for next day
+             # Extract pattern ending at i
+             # Slice: [i-target_len+1 : i+1]
+             if i - target_len + 1 < 0: continue
+             
+             window_sigs = signals[i-target_len+1 : i+1]
+             # Check for any neutral? 
+             # Base logic: "Streak" implies no neutrals.
+             if '.' in window_sigs:
+                 continue
+                 
+             current_pat = "".join(window_sigs)
+             
+             if current_pat == pattern_str:
+                 # MATCH FOUND
+                 # Calculate N+1 Intraday Return
+                 next_o = open_arr[i+1]
+                 next_c = close_arr[i+1]
+                 next_ret = (next_c - next_o) / next_o
+                 future_returns.append(next_ret)
+                 
+        return future_returns

@@ -83,7 +83,7 @@ def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_t
                 'is_tradeable': res['is_tradeable'],
                 'acc_score': prob_val,
                 'rr_score': res['rr'],
-                'change_pct': df['close'].pct_change().iloc[-1] * 100,
+                'change_pct': ((df['close'].iloc[-1] - df['open'].iloc[-1]) / df['open'].iloc[-1]) * 100,
                 'pattern_display': res['pattern'],
                 'pattern': res['pattern'], # Compatibility key for main.py
                 'matches': res['matches'],

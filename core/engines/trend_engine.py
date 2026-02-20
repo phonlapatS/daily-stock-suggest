@@ -18,11 +18,16 @@ class TrendMomentumEngine(BasePatternEngine):
         if df is None or len(df) < 50:
             return []
             
+        open_price = df['open']
         close = df['close']
         high = df['high']
         low = df['low']
         volume = df['volume']
-        pct_change = close.pct_change()
+        
+        # STRICT INTRADAY LOGIC: (Close - Open) / Open
+        # Measures "Candle Body Strength" (Who won the day?)
+        pct_change = ((close - open_price) / open_price)
+        
         exchange = settings.get('exchange', '').upper()
         
         # Market Detection
@@ -105,8 +110,9 @@ class TrendMomentumEngine(BasePatternEngine):
             length = len(sub_pat)
             
             # Context-Aware History Scan (same trend regime = Apples to Apples)
+            # Pass df to get Open/Close for Intraday Return
             future_returns = self.get_pattern_stats(
-                close, pct_change, effective_std, sub_pat, length, sma50, current_trend
+                df, pct_change, effective_std, sub_pat, length, sma50, current_trend
             )
             if not future_returns:
                 continue
@@ -174,7 +180,7 @@ class TrendMomentumEngine(BasePatternEngine):
             
         return results
 
-    def get_pattern_stats(self, prices, pct_change, effective_std, pattern_str, length, sma50, current_trend):
+    def get_pattern_stats(self, df, pct_change, effective_std, pattern_str, length, sma50, current_trend):
         """
         Regime-Aware History Scan (Mode A: Overlapping Sliding Window).
         
@@ -189,11 +195,16 @@ class TrendMomentumEngine(BasePatternEngine):
         n = len(pct_change)
         future_returns = []
         
+        pct_arr = pct_change.values
+        eff_std_arr = effective_std.values
+        open_arr = df['open'].values
+        close_arr = df['close'].values
+        
         # Step 1: Build full signal series
         signals = []
         for i in range(n):
-            ret = pct_change.iloc[i]
-            thresh = effective_std.iloc[i]
+            ret = pct_arr[i]
+            thresh = eff_std_arr[i]
             
             if pd.isna(ret) or pd.isna(thresh):
                 signals.append('.')
@@ -232,13 +243,15 @@ class TrendMomentumEngine(BasePatternEngine):
                         
                         # Regime filter: only count if same trend context
                         if not pd.isna(sma50.iloc[abs_idx]):
-                            hist_trend = "BULL" if prices.iloc[abs_idx] > sma50.iloc[abs_idx] else "BEAR"
+                            hist_trend = "BULL" if close_arr[abs_idx] > sma50.iloc[abs_idx] else "BEAR"
                             if hist_trend != current_trend:
                                 continue
                         
-                        # Step 4: Record N+1 future return
+                        # Step 4: Record N+1 Intraday Return
                         if abs_idx + 1 < n:
-                            next_ret = (prices.iloc[abs_idx + 1] - prices.iloc[abs_idx]) / prices.iloc[abs_idx]
+                            next_o = open_arr[abs_idx + 1]
+                            next_c = close_arr[abs_idx + 1]
+                            next_ret = (next_c - next_o) / next_o
                             future_returns.append(next_ret)
         
         return future_returns

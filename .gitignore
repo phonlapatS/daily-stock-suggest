@@ -1,7 +1,7 @@
 # Data
-data/*.parquet
-*.parquet
-*.csv
+# data/*.parquet
+# *.parquet
+# *.csv
 
 # System
 .DS_Store

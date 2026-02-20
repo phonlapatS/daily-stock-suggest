@@ -1,0 +1,66 @@
+Recovered Forecast Summary for 2026-02-12
+============================================================
+
+Total Patterns: 133
+Tradeable Signals: 133
+Tradeable Ratio: 100.0%
+
+
+SET Market:
+------------------------------
+  Total: 64 patterns
+  Tradeable: 64 signals
+
+  Top Tradeable Signals:
+    AWC      +    UP    75.0%     2.54
+    BEM      +    UP    75.0%     5.45
+    BGRIM    +    UP    75.0%    14.50
+    BYD      +    UP    75.0%     0.60
+    CK       +    UP    75.0%    14.90
+    EPG      +    UP    75.0%     3.34
+    GPSC     +    UP    75.0%    41.25
+    GUNKUL   +    UP    75.0%     2.20
+    JMT      +    UP    75.0%    10.60
+    KTC      +    UP    75.0%    30.75
+    ... and 54 more
+
+NASDAQ Market:
+------------------------------
+  Total: 60 patterns
+  Tradeable: 60 signals
+
+  Top Tradeable Signals:
+    CSCO     -    DOWN  75.0%    85.54
+    GFS      +    UP    75.0%    48.74
+    INTU     -    DOWN  75.0%   399.69
+    LCID     -    DOWN  75.0%    10.05
+    RIVN     +    UP    75.0%    14.76
+    TEAM     -    DOWN  75.0%    86.97
+    TMUS     +    UP    75.0%   209.54
+    ENPH     -    DOWN  73.3%    48.23
+    EXC      +    UP    73.2%    44.45
+    AMAT     +    UP    72.4%   339.88
+    ... and 50 more
+
+TWSE Market:
+------------------------------
+  Total: 7 patterns
+  Tradeable: 7 signals
+
+  Top Tradeable Signals:
+    3711     +    UP    75.0%   354.50
+    2303     ++   UP    70.0%    62.80
+    3711     ++   UP    70.0%   354.50
+    2330     +    UP    69.3%  1915.00
+    2454     ++   UP    68.4%  1855.00
+    2395     +    UP    66.9%   305.00
+    2308     ++   UP    65.8%  1260.00
+
+HKEX Market:
+------------------------------
+  Total: 2 patterns
+  Tradeable: 2 signals
+
+  Top Tradeable Signals:
+    3690     -    DOWN  75.0%    84.85
+    9866     ++   UP    65.0%    39.46

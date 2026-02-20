@@ -47,13 +47,17 @@ def scan_history(df, engine, no_threshold=False, min_floor=0.0):
     if df is None or len(df) < 50:
         return {}
 
+    open_price = df['open']
     close = df['close']
-    pct_change = close.pct_change()
+    
+    # STRICT INTRADAY LOGIC: (Close - Open) / Open
+    # Measures "Candle Body Strength" (Who won the day?)
+    # Ignores overnight gaps.
+    pct_change = ((close - open_price) / open_price)
     
     # Calculate Thresholds
     if no_threshold:
         # Version 2: No Threshold (All moves count)
-        # Use a very small epsilon to validly compare floats, or just 0.0
         effective_std = pd.Series(0.0, index=pct_change.index)
     else:
         # Version 1: Dynamic Threshold (Standard Logic)
@@ -62,62 +66,17 @@ def scan_history(df, engine, no_threshold=False, min_floor=0.0):
     # Dictionary to count patterns: pattern -> {total, up, down, neutral}
     pattern_counts = {}
     
-    # Sliding window over history
-    # Start from index 50 to have enough history for volatility calc
-    # Loop until the end
-    n = len(df)
-    
-    # We want patterns ending at day `i`
-    # We look back up to max_len (8)
-    # Optimization: BasePatternEngine.extract_pattern takes a slice
-    
-    # Pre-calculate signals to speed up? 
-    # extract_pattern logic: 
-    # for r, t in zip(reversed(returns), reversed(thresh)): ...
-    
-    # Let's stick to the robust method: call extract_pattern for each day
-    # It might be slow but it's correct.
-    
     # Performance Optimization:
     # Convert series to numpy arrays for faster indexing
     pct_arr = pct_change.values
     thresh_arr = effective_std.values
+    open_arr = open_price.values
+    close_arr = close.values
     
     # Iterate through history
-    # Start at max_len to ensure we can look back
-    # End at n - 1 (because we need next day's outcome)
+    n = len(df)
     for i in range(engine.max_len, n - 1):
         # Window ending at i (inclusive)
-        # Extract pattern ending at i
-        # We pass a window of max_len ending at i
-        
-        window_returns = pct_arr[i-engine.max_len+1 : i+1]
-        window_thresh = thresh_arr[i-engine.max_len+1 : i+1]
-        
-        # We need to reverse because extract_pattern expects [oldest ... newest] 
-        # BUT BasePatternEngine.extract_pattern iterates zip(returns, threshold)
-        # and builds string: if r > t: + ...
-        # So providing [oldest ... newest] builds string "Oldest...Newest"
-        # Wait, let's check base_engine logic:
-        # for r, t in zip(returns, threshold): ... pat_str += ...
-        # So "Oldest" char comes first. Correct.
-        
-        # However, extract_pattern "breaks on neutral".
-        # If we feed it [t-7, t-6, ... t], and t-4 is neutral, returns string for [t-7...t-5].
-        # But we want the pattern ENDING at t.
-        # So we should feed it REVERSED arrays: [t, t-1, t-2 ...]
-        # And then reverse the result string.
-        
-        # Let's verify BasePatternEngine.get_active_pattern logic:
-        # It walks backwards: for i in range(1, max_lookback+1): idx = len - i ...
-        # And then reverses the chars.
-        
-        # So, to use extract_pattern correctly for "Tail Matching":
-        # We should pass [t, t-1, ... t-7]
-        # Then reverse the result string??
-        
-        # Actually, let's just implement the "Walk Backwards" logic here inline for speed and correctness.
-        # This matches get_active_pattern.
         
         current_pattern_chars = []
         for back in range(engine.max_len):
@@ -130,7 +89,7 @@ def scan_history(df, engine, no_threshold=False, min_floor=0.0):
             if np.isnan(r) or np.isnan(t): break
             
             # Neutral Check
-            if abs(r) <= t: # Use <= to handle 0.0 threshold case (0 is neutral)
+            if abs(r) <= t: 
                 break
                 
             if r > t:
@@ -148,7 +107,11 @@ def scan_history(df, engine, no_threshold=False, min_floor=0.0):
         # --------------------------------------------------
         # Determine NEXT DAY Outcome (i + 1)
         # --------------------------------------------------
-        next_ret = pct_arr[i+1]
+        # Use Intraday Move for Next Day Too
+        next_o = open_arr[i+1]
+        next_c = close_arr[i+1]
+        next_ret = (next_c - next_o) / next_o
+        
         threshold_at_scan = thresh_arr[i] 
         
         outcome = 'neutral'
@@ -160,13 +123,6 @@ def scan_history(df, engine, no_threshold=False, min_floor=0.0):
         # --------------------------------------------------
         # Record Stats for All Suffixes
         # --------------------------------------------------
-        
-        # --------------------------------------------------
-        # Record Stats for All Suffixes
-        # --------------------------------------------------
-        
-        # Record ALL suffixes of the active pattern to ensure complete statistics
-        # e.g. Active "++-" -> Record "++-", "+-", "-"
         
         # Loop through all valid lengths (min_len=1 to len)
         for length in range(1, len(full_pat) + 1):
