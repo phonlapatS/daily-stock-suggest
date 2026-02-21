@@ -1,20 +1,16 @@
-# Stock Prediction System (v4.1)
+# Stock Prediction System (v4.4)
 
 📊 **Fractal N+1 Prediction System - Production-Ready Risk Management System**
 
-> **🆕 Version 4.1 Updates (2026-02-14):** "Production-Ready Risk Management System"
-> - ✅ **Risk Management Focus:** Stop Loss, Take Profit, Trailing Stop, Position Sizing
-> - ✅ **Forward Testing System:** Predict N+1 with automatic verification
-> - ✅ **Auto Scheduler:** Multi-market support with smart timing (17:00 ICT Asia, 05:00 ICT US)
-> - ✅ **Market Time Management:** Smart skip logic for market close times
-> - ✅ **Production Mode:** Slippage, Commission, Gap Risk, Liquidity Filter
-> - ✅ **Transparent Display:** Count prominent, all stocks shown, sorted by Prob%
-> - ✅ **Philosophy Shift:** From Indicator-based → Risk Management-based
+> **🆕 Version 4.4 Updates (2026-02-22):** "Aggregate Voting & Dynamic Streak"
+> - ✅ **Aggregate Voting (V4.4):** Consensus-based prediction using Winner-Takes-All across all pattern suffixes
+> - ✅ **Dynamic Streak Extraction:** Auto-scanning backwards until the first neutral day (No fixed length)
+> - ✅ **Statistical Gatekeeper:** Enforced Min 30 samples per suffix for reliable consensus
+> - ✅ **Simplified Reporting:** Streamlined terminal output (Symbol | Forecast | Prob%)
+> - ✅ **Suffix Breakdown:** Detailed per-suffix voting results stored in performance logs
 > - ✅ **5,000-Bar Verified:** Backtested on 260k+ trades with affirmed Alpha (70% Win Rates)
-> - ✅ **Statistical Reliability:** Count >= 30 for THAI (Central Limit Theorem)
-> - ✅ **Intraday Metals Support:** Gold & Silver 15min/30min with separated logic
 > - ✅ **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)
-> - ✅ **Branch:** [version-4.1](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.1)
+> - ✅ **Branch:** [version-4.4](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.4)
 
 ## 🌎 Supported Assets (Total: 255+)
 
@@ -97,7 +93,7 @@ python scripts/market_sentiment.py
 
 ## 📖 Documentation
 
-### 🆕 Complete System Manual (V14.3)
+### 🆕 Complete System Manual (V4.4)
 - **[COMPLETE_SYSTEM_MANUAL.md](COMPLETE_SYSTEM_MANUAL.md)** - ⭐ **คู่มือระบบฉบับสมบูรณ์** (แนะนำให้อ่านก่อน)
   - Flow การทำงานแบบละเอียด
   - คำสั่งทั้งหมด (Complete Command Reference)
@@ -138,10 +134,12 @@ python scripts/view_report.py --all              # View all reports
 
 ## 💡 Concept: Risk Management-Based System
 
-### 1. Pattern Matching + History Statistics
-- **Pattern Length:** 3-8 days (Dynamic)
+### 1. Pattern Matching (V4.4 Aggregate Voting)
+- **Dynamic Streak:** Scans backwards until neutral (No fixed length)
+- **Consensus Voting:** Winner-Takes-All for each suffix level
+- **Min Samples:** Each suffix requires >= 30 matches to vote
 - **Threshold:** Market-specific (Thai: 1.0x, US: 0.9x, TW/CN: 0.9x)
-- **Statistics:** History-based (Prob, AvgWin, AvgLoss, RRR)
+- **Statistics:** Consolidated probability from all winning suffixes
 
 ### 2. Risk Management (Core Focus)
 - **Stop Loss:** 1.5-2.0% (Fixed, market-specific)
@@ -168,7 +166,14 @@ python scripts/view_report.py --all              # View all reports
 
 ## 📈 Changelog
 
-### v4.1 (2026-02-14) - Current
+### v4.4 (2026-02-22) - Current
+- **Aggregate Voting Engine:** Implemented consensus-based prediction model.
+- **Winner-Takes-All Consensus:** Suffix-level voting replaces "Best Fit" selection.
+- **Dynamic Streak Extraction:** Pattern length now adjusts automatically to the current streak.
+- **Statistical Gatekeeper:** Rigid requirement of 30+ samples per suffix for voting.
+- **Reporting Overhaul:** Simplified terminal display and detailed CSV breakdown logging.
+
+### v4.1 (2026-02-14)
 - **Forward Testing System:** Predict N+1 with automatic verification
 - **Auto Scheduler:** Multi-market support with optimal timing
 - **Market Time Management:** Smart skip logic for market close times
@@ -248,7 +253,7 @@ main.py
 ## 📚 Additional Resources
 
 - **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)
-- **Branch:** [version-4.1](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.1)
+- **Branch:** [version-4.4](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.4)
 - **Documentation:** [docs/](docs/)
 - **Version History:** [docs/VERSION_HISTORY.md](docs/VERSION_HISTORY.md)
 
@@ -275,4 +280,4 @@ This is a research project. For questions or suggestions, please open an issue o
 
 ---
 
-*Last Updated: 2026-02-14*
+*Last Updated: 2026-02-22*

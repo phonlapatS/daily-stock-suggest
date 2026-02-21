@@ -1,8 +1,8 @@
-# 📚 คู่มือระบบ PredictPlus1 ฉบับสมบูรณ์ (V14.3)
-
-**Last Updated:** 2026-01-XX  
-**Version:** V14.3  
-**Status:** Production-Ready
+# 📚 คู่มือระบบ PredictPlus1 ฉบับสมบูรณ์ (V4.4)
+ 
+ **Last Updated:** 2026-02-22  
+ **Version:** V4.4  
+ **Status:** Production-Ready
 
 ---
 
@@ -22,9 +22,9 @@
 
 ### ระบบคืออะไร?
 **PredictPlus1** เป็นระบบทำนายทิศทางหุ้น (N+1 Prediction) ที่ใช้:
-- **Pattern Matching** (3-8 วัน) + **Historical Statistics** (Prob%, RRR, Count)
-- **Risk Management** (ATR-based SL/TP, Trailing Stop, Max Hold)
-- **Forward Testing** (ทำนายและตรวจสอบผลจริง)
+- **Pattern Matching (V4.4):** Aggregate Voting (Consensus) + Dynamic Streak
+- **Risk Management:** ATR-based SL/TP, Trailing Stop, Max Hold
+- **Forward Testing:** ทำนายและตรวจสอบผลจริงผ่าน performance_log.csv
 
 ### สิ่งที่ระบบทำได้
 1. ✅ **ทำนายทิศทางหุ้น** (UP/DOWN) สำหรับวันถัดไป
@@ -70,19 +70,19 @@
    │  ├─ ใช้ Cache ถ้ามี (Delta Fetch)
    │  └─ Fetch ใหม่ถ้าไม่มี Cache
    │
-   ├─ Pattern Matching (processor.py)
-   │  ├─ สแกน Pattern 3-8 วัน
-   │  ├─ คำนวณ Threshold (Market-specific)
-   │  ├─ หา Historical Matches
-   │  └─ คำนวณ Prob%, RRR, Count
+   ├─ Pattern Matching (V4.4 Aggregate Voting)
+   │  ├─ Dynamic Streak (นับถอยหลังจนเจอวัน Neutral)
+   │  ├─ Suffix Breakdown (แตก pattern เป็นส่วนย่อย)
+   │  ├─ Winner-Takes-All (เลือกฝั่งที่ชนะในแต่ละระดับ)
+   │  └─ Aggregate Tally (รวมคะแนนโหวตจากทุก Suffix)
    │
    ├─ Gatekeeper Filter
-   │  ├─ Min Prob (48-52% ตามตลาด)
-   │  ├─ Min Stats (20-35 ตามตลาด)
-   │  └─ Quality Filter (AvgWin > AvgLoss)
+   │  ├─ Min Prob (>= 55% สำหรับการสแกนหลัก)
+   │  ├─ Min Stats (>= 30 ครั้งต่อ Suffix ที่นำมาโหวต)
+   │  └─ Quality Filter (Consensus-based)
    │
    └─ Log Forecast (ถ้าผ่านเกณฑ์)
-      ├─ บันทึกไปที่ performance_log.csv
+      ├─ บันทึกไปที่ performance_log.csv (รวม breakdown โหวต)
       └─ แสดงใน Report
 
 4. สร้าง Report
@@ -509,7 +509,7 @@ python scripts/plot_equity_curves.py
 | **Trailing Activate** | `2.0%` | Activate ช้าลง - ให้มีเวลาไปถึง TP |
 | **Trailing Distance** | `60%` | V14.3: เพิ่มจาก 50% → 60% ให้กำไร run ได้มากขึ้น |
 | **Min Prob (Gatekeeper)** | `48%` | V14.3: ลดจาก 50% เพื่อเพิ่ม Win Rate |
-| **Min Stats (Gatekeeper)** | `30` | V14.2: เพิ่มจาก 25 |
+| **Min Stats (Gatekeeper)** | `30` | V4.4: บังคับขั้นต่ำต่อ Suffix เพื่อความแม่นยำ |
 | **Threshold Multiplier** | `1.1` | V14.0: เพิ่มจาก 1.0 |
 
 **Filter Criteria (Display):**

@@ -25,24 +25,16 @@ class BasePatternEngine:
             else: break  # Neutral day = STOP (Core Logic 1)
         return pat_str
 
-    def get_active_pattern(self, pct_change, effective_std, max_lookback=7):
+    def get_active_pattern(self, pct_change, effective_std, max_lookback=15):
         """
-        Rule 2: Dynamic Lookback — Cut at Neutral Day
+        Rule 2: Dynamic Lookback — Pure Streak Extraction (Non-Fixed)
         
-        Walks backwards from the most recent bar, building a pattern string.
-        STOPS immediately when a neutral day (abs(change) < threshold) is encountered.
-        Only '+' and '-' characters are included — no '.' allowed.
-        
-        Args:
-            pct_change: Series of percentage changes
-            effective_std: Series of dynamic thresholds (fractional, e.g., 0.01 = 1%)
-            max_lookback: Maximum number of days to look back (default 7)
-            
-        Returns:
-            str: Active pattern string (e.g., '-+-') or empty string if no active streak
+        Walks backwards from today, building a pattern string of ALL consecutive
+        significant moves. Breaks immediately on the first 'Neutral' day.
         """
         pattern_chars = []
         
+        # Increase safety lookback or remove fixed loop if strictly streak-based
         for i in range(1, max_lookback + 1):
             idx = len(pct_change) - i
             if idx < 0:
@@ -172,6 +164,85 @@ class BasePatternEngine:
         
         # No sub-pattern met Count >= min_count → No Trade / Pass
         return None
+
+    def aggregate_voting(self, df, pct_change, effective_std, active_pattern, min_count=30, **kwargs):
+        """
+        V4.4: Winner-Takes-All Per-Suffix Voting Logic.
+        1. Break active_pattern into suffixes (e.g., '++-', '+-', '-')
+        2. For each suffix, get historical Up/Down counts
+        3. Identify the 'local winner' for that suffix
+        4. Add ONLY the winner's count to the global tally
+        5. Return consolidated result
+        """
+        if not active_pattern:
+            return None
+            
+        total_p_weight = 0
+        total_n_weight = 0
+        suffix_details = []
+
+        # Generate sub-patterns from longest to shortest
+        # e.g., '++-' -> ['++-', '+-', '-']
+        suffixes = []
+        for i in range(len(active_pattern)):
+            sub = active_pattern[i:]
+            if sub:
+                suffixes.append(sub)
+
+        for sub_pat in suffixes:
+            # 1. Get history for this suffix (using child-implemented get_pattern_stats)
+            # Reversion: needs df, pct, std, pat, len
+            # Trend: needs df, pct, std, pat, len, sma50, trend
+            future_returns = self.get_pattern_stats(df, pct_change, effective_std, sub_pat, len(sub_pat), **kwargs)
+            
+            if not future_returns or len(future_returns) < min_count:
+                continue
+                
+            # 2. Count P (+) and N (-)
+            p_count = sum(1 for r in future_returns if r > 0)
+            n_count = sum(1 for r in future_returns if r < 0)
+            
+            if p_count == 0 and n_count == 0:
+                continue
+
+            # 3. Determine Local Winner (Winner-Takes-All)
+            if p_count > n_count:
+                total_p_weight += p_count
+                winner = 'P'
+                winner_count = p_count
+            elif n_count > p_count:
+                total_n_weight += n_count
+                winner = 'N'
+                winner_count = n_count
+            else:
+                # Tie: ignore or skip
+                winner = 'TIE'
+                winner_count = 0
+                
+            suffix_details.append(f"{sub_pat}:{p_count}/{n_count}({winner})")
+
+        # Handle case where no suffixes were found
+        if total_p_weight == 0 and total_n_weight == 0:
+            return None
+
+        # 4. Final Aggregation
+        total_weight = total_p_weight + total_n_weight
+        if total_p_weight >= total_n_weight:
+            forecast = 'UP'
+            final_prob = (total_p_weight / total_weight) * 100
+        else:
+            forecast = 'DOWN'
+            final_prob = (total_n_weight / total_weight) * 100
+
+        return {
+            'pattern': active_pattern,
+            'forecast': forecast,
+            'prob': final_prob,
+            'total_p': total_p_weight,
+            'total_n': total_n_weight,
+            'total_events': total_weight,
+            'breakdown': "; ".join(suffix_details)
+        }
 
     def get_pattern_stats(self, prices, pct_change, effective_std, pattern_str, length, multiplier=1.0):
         """

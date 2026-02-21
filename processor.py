@@ -70,9 +70,6 @@ def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_t
         # Post-process results for reporting consistency
         formatted_results = []
         for res in engine_results:
-            # Derive avg_return direction from forecast
-            # If UP forecast: avg_return positive, bull_prob = prob, bear_prob = 100-prob
-            # If DOWN forecast: avg_return negative, bear_prob = prob, bull_prob = 100-prob
             is_up = (res['forecast'] == 'UP')
             prob_val = res['prob']
             
@@ -82,44 +79,22 @@ def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_t
                 'price': df['close'].iloc[-1],
                 'is_tradeable': res['is_tradeable'],
                 'acc_score': prob_val,
-                'rr_score': res['rr'],
+                'rr_score': res.get('rr', 1.0),
                 'change_pct': ((df['close'].iloc[-1] - df['open'].iloc[-1]) / df['open'].iloc[-1]) * 100,
-                'pattern_display': res['pattern'],
-                'pattern': res['pattern'], # Compatibility key for main.py
-                'matches': res['matches'],
+                'pattern': res['pattern'],
                 'forecast_dir': 1 if is_up else -1,
                 'forecast_label': res['forecast'],
-                'strategy_name': f"{res['engine']} ({'REVERSAL' if res.get('is_reversal') else 'TREND' if res.get('is_trend_follow') else 'DATA'})",
+                'strategy_name': f"{res['engine']} (VOTING)",
                 'confidence': (prob_val - 50) * 2,
-                # Compatibility keys for generate_report
-                'avg_return': res['rr'] if is_up else -res['rr'],
-                'bull_prob': prob_val if is_up else (100 - prob_val),
-                'bear_prob': (100 - prob_val) if is_up else prob_val,
+                'total_p': res.get('total_p', 0),
+                'total_n': res.get('total_n', 0),
+                'total_events': res.get('total_events', 0),
+                'breakdown': res.get('breakdown', ''),
                 'threshold': res.get('threshold', 0),
-                'avg_win': res.get('avg_win', 0),
-                'avg_loss': res.get('avg_loss', 0),
                 'total_bars': len(df)
             })
             
-        # ---------------------------------------------------------
-        # V8.0: ANTI-OVERLAPPING (Best Fit Selection)
-        # ---------------------------------------------------------
-        # User Req: Select ONLY ONE pattern per symbol (The most confident one)
-        # Logic: 
-        # 1. Sort by Probability (Confidence) DESC
-        # 2. Sort by Pattern Length DESC (Tie-breaker)
-        # 3. Return top 1
-        
-        if not formatted_results:
-            return []
-            
-        # Sort: Acc Score (Prob) DESC, Pattern Length DESC
-        formatted_results.sort(key=lambda x: (-x['acc_score'], -len(x['pattern'])))
-        
-        # Select Top 1
-        best_fit = [formatted_results[0]]
-        
-        return best_fit
+        return formatted_results
 
     except Exception as e:
         print(f"❌ Error in modular analysis for {symbol}: {e}")

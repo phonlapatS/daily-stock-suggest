@@ -8,7 +8,8 @@
 
 | Version | Codename | Date | Key Features | Status |
 |---------|----------|------|--------------|--------|
-| V1.0 | Foundation | 2025-12 | Basic Pattern Matching | ❌ Deprecated |
+| **V4.4** | **Aggregate Voting**| **2026-02** | **Consensus Voting, Dynamic Streak, 30-sample Gatekeeper** | **✅ CURRENT** |
+| V4.1 | Production-Ready | 2026-02 | Production Mode, Enhanced RM, Transparent Display | ✅ Stable |
 | V2.0 | Enhanced | 2026-01 | Multi-timeframe Support | ❌ Deprecated |
 | V3.0 | Statistical | 2026-01 | Statistical Filtering | ❌ Deprecated |
 | V3.1 | Strict | 2026-01 | Streak Logic + Thresholds | ❌ Deprecated |
@@ -29,7 +30,21 @@
 | V12.4 | Real-World Ready | 2026-02 | Option A: RRR 1.25, Count 150 - Best for real trading | ✅ Stable |
 | V13.0 | China Market Focus | 2026-02 | Lower RRR (1.0) and Prob (53%) - Increase tradable stocks | ✅ Stable |
 | V13.1 | China Market - Increase Stocks | 2026-02 | Lower RRR (0.95) and Count (10), Optimize RM (TP 4.5%) | ✅ Stable |
-| **V13.2** | **China Market - RM Optimization** | **2026-02** | **Tighten SL (1.2%), Increase TP (5.5%), Better RRR (4.58)** | **✅ Current** |
+### V4.4 - Aggregate Voting (2026-02-22) ⭐ CURRENT
+**แนวคิด:** Consensus Voting + Dynamic Streak Extraction
+
+**สิ่งที่ทำ:**
+- **Aggregate Voting (Winner-Takes-All):** เปลี่ยนการเลือก Pattern จาก "Best Fit" (เลือกอันเดียว) เป็น "Consensus" (รวมคะแนนโหวตจากทุกส่วนปลายของ Pattern)
+- **Dynamic Streak Extraction:** ยกเลิกการเลือกจำนวนวันแบบตายตัว (Fixed Lookback) โดยระบบจะสแกนย้อนหลังจนกว่าจะเจอวัน "Neutral" (นิ่ง) เพื่อหาขอบเขตของรอบราคาที่แท้จริง
+- **Statistical Gatekeeper:** บังคับขั้นต่ำ 30 ครั้ง (Sample Size) ต่อหน่วยการโหวต เพื่อความน่าเชื่อถือทางสถิติ
+- **Detailed Suffix Breakdown:** บันทึกรายละเอียดการโหวตแยกตามระดับลงใน Logs
+
+**ข้อดี:**
+- ✅ **เสถียรขึ้น (Statistical Robustness):** ลดสัญญาณหลอกจากการที่ pattern ยาวๆ เพียงอันเดียวมีข้อมูลน้อย
+- ✅ **Logic แม่นยำขึ้น:** จับรอบหุ้นตามความแรงจริง (Momentum) ไม่จำกัดแค่วันที่ระบุ
+- ✅ **โปร่งใส:** ตรวจสอบย้อนหลังได้ว่า Suffix ไหนเป็นตัวขับเคลื่อนสัญญาณ
+
+**ทำไมถึงเป็น Current:** เป็นการรวบรวมจุดแข็งของ Logic เดิมนำมาหาจุดร่วม (Consensus) ทำให้การตัดสินใจมีความเสถียรและทนทานต่อ noise ในตลาดมากขึ้น
 
 ---
 
@@ -670,7 +685,7 @@
 
 ---
 
-**Last Updated:** 2026-02-14  
-**Current Version:** V4.1 (Production-Ready Risk Management System)  
-**Status:** ✅ **PRODUCTION-READY** - Complete with Intraday Metals Support  
+**Last Updated:** 2026-02-22  
+**Current Version:** V4.4 (Aggregate Voting & Dynamic Streak)  
+**Status:** ✅ **PRODUCTION-READY** - Consensus-based Statistics  
 **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)

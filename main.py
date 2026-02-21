@@ -149,18 +149,16 @@ def show_all_forecasts(results):
         
         for r in filtered_results:
             symbol = r.get('symbol', 'Unknown')
-            pattern = r.get('pattern', r.get('pattern_display', '???'))
-            bull_prob = r.get('bull_prob', 50)
-            bear_prob = r.get('bear_prob', 50)
-            matches = r.get('matches', 0)
-            total_bars = r.get('total_bars', 0)
-            if pd.isna(total_bars): total_bars = 0
+            pattern = r.get('pattern', '???')
+            prob = r.get('acc_score', 50.0)
+            forecast = r.get('forecast_label', 'NEUTRAL')
+            matches = r.get('total_events', 0)
             is_tradeable = _is_true_flag(r.get('is_tradeable', False))
             price = r.get('price', 0)
             
             tradeable_str = "✅ YES" if is_tradeable else "❌ NO"
             
-            print(f"{symbol:<12} {pattern:^10} {bull_prob:>7.1f}% {bear_prob:>7.1f}% {matches:>8} {int(total_bars):>12} {tradeable_str:>10} {price:>10.2f}")
+            print(f"{symbol:<12} {pattern:^10} {forecast:^10} {prob:>7.1f}% {int(matches):>8} {tradeable_str:>10} {price:>10.2f}")
         
         print("-" * 110)
         filtered_count = len(filtered_results)
@@ -330,47 +328,13 @@ def generate_report(results):
         for r in results:
             if r['group'] != group_key: continue
             
-            # Filter patterns ที่ matches < MIN_MATCHES_THRESHOLD (sample size น้อยเกินไป)
-            if r.get('matches', 0) < MIN_MATCHES_THRESHOLD:
+            # V4.4: Use consolidated accuracy score from voting
+            prob = r.get('acc_score', 0)
+            
+            # Simple threshold check: Must be clearly winning (>= 55%)
+            if prob < 55:
                 continue
-            
-            # Calculate probabilities
-            bull_prob = r.get('bull_prob', 50)
-            bear_prob = r.get('bear_prob', 50)
-            
-            # แสดงเฉพาะฝั่งที่ชนะ (prob สูงกว่า) และชนะชัดเจน
-            # ถ้า bull_prob > bear_prob → แสดง UP (prob = bull_prob)
-            # ถ้า bear_prob > bull_prob → แสดง DOWN (prob = bear_prob)
-            # แต่ต้องชนะชัดเจน: prob ≥ 55% (ไม่ใช่ 51% vs 49% ที่สับสน)
-            
-            if bull_prob > bear_prob:
-                prob = bull_prob
-                forecast_dir = 'UP'
-                # ต้องชนะชัดเจน: prob ≥ 55% และต่างกัน ≥ 5%
-                if prob < 55 or (prob - bear_prob) < 5:
-                    continue  # ชนะไม่ชัดเจน → ไม่แสดง
-            elif bear_prob > bull_prob:
-                prob = bear_prob
-                forecast_dir = 'DOWN'
-                # ต้องชนะชัดเจน: prob ≥ 55% และต่างกัน ≥ 5%
-                if prob < 55 or (prob - bull_prob) < 5:
-                    continue  # ชนะไม่ชัดเจน → ไม่แสดง
-            else:
-                continue  # เท่ากัน → ไม่แสดง
-            
-            # Forward Testing: ไม่กรอง RRR - แสดงทุกหุ้นที่ทำนาย
-            # (RRR เป็น metric สำหรับ calculate_metrics.py เท่านั้น)
-            
-            # Update forecast direction in result
-            r['forecast_label'] = forecast_dir
-            r['_sort_prob'] = prob
-            
-            # Calculate display probability
-            avg_ret = r['avg_return']
-            if avg_ret > 0: prob = r['bull_prob']
-            elif avg_ret < 0: prob = r['bear_prob']
-            else: prob = 50.0
-            
+                
             r['_sort_prob'] = prob
             filtered_data.append(r)
         
@@ -381,88 +345,32 @@ def generate_report(results):
             
         print(f"\n{title}")
         
-        # -------------------------------------------------------------
-        # 2. Deduplication (แก้บัค: ลบ pattern ซ้ำซ้อน)
-        # -------------------------------------------------------------
-        # V5.2: ถ้า symbol + pattern เหมือนกัน → แสดงแค่ 1 อัน (ที่ดีที่สุด)
-        # "ดีที่สุด" = prob สูงสุด + matches สมเหตุสมผล (ไม่ใช่ prob สูงแต่ matches น้อย)
-        # Logic: Pattern เดียวกัน = ทายความน่าจะเป็นเดียวกัน → ควรมี forecast เดียว
-        # แต่ต้อง balance ระหว่าง prob กับ sample size (matches)
-        seen_keys = {}  # (symbol, pattern) -> best record
+        # 2. Deduplication (V4.4: Best Fit per Symbol)
+        seen_keys = {}
         for r in filtered_data:
             symbol = r.get('symbol', '')
-            pattern = r.get('pattern', r.get('pattern_display', ''))
-            prob_val = r.get('_sort_prob', 50.0)
-            matches = r.get('matches', 0)
-            
-            key = (symbol, pattern)
-            
-            if key not in seen_keys:
-                # First occurrence
-                seen_keys[key] = r
-            else:
-                # Compare with existing: เลือกอันที่ดีที่สุด (balance prob + matches)
-                existing = seen_keys[key]
-                existing_prob = existing.get('_sort_prob', 50.0)
-                existing_matches = existing.get('matches', 0)
-                
-                # Priority 1: prob สูงกว่า → เลือก (แต่ต้อง matches ไม่น้อยเกินไป)
-                if prob_val > existing_prob:
-                    # ถ้า prob สูงกว่า แต่ matches น้อยกว่าเยอะมาก → ต้องเช็ค
-                    if matches < existing_matches * 0.5:  # matches น้อยกว่า 50% → ไม่เลือก
-                        # แต่ถ้า prob สูงกว่าเยอะมาก (≥ 10%) → เลือก
-                        if prob_val - existing_prob >= 10:
-                            seen_keys[key] = r
-                        # else: keep existing (matches สมเหตุสมผลกว่า)
-                    else:
-                        seen_keys[key] = r  # prob สูง + matches สมเหตุสมผล
-                elif prob_val == existing_prob:
-                    # Same prob → เลือกอันที่มี matches สูงกว่า
-                    if matches > existing_matches:
-                        seen_keys[key] = r
-                else:
-                    # prob ต่ำกว่า → ไม่เลือก (keep existing)
-                    pass
+            if symbol not in seen_keys or r['_sort_prob'] > seen_keys[symbol]['_sort_prob']:
+                seen_keys[symbol] = r
         
         filtered_data = list(seen_keys.values())
         
-        # -------------------------------------------------------------
-        # 3. Sorting (Priority 1: Prob%, Priority 2: Matches)
-        # -------------------------------------------------------------
-        # V5.2: เรียงตาม prob สูงขึ้นก่อน (ไม่ group by symbol)
-        filtered_data.sort(key=lambda x: (
-            -x['_sort_prob'],  # Higher prob first
-            -x['matches'],  # More matches first (tiebreaker)
-            x['symbol']  # Alphabetical (tiebreaker)
-        ))
+        # 3. Sorting (Prob DESC)
+        filtered_data.sort(key=lambda x: -x['_sort_prob'])
         
-        # 4. Table Layout - แสดงเฉพาะ forecast ที่ระบบทายจริงๆ พร้อม stats
-        header = f"{'Symbol':<12} {'Pattern':^10} {'Forecast':<15} {'Matches':>8} {'Total Bars':>12} {'Prob%':>8}"
+        # 4. Table Layout - V4.4 Simplified Voting Summary
+        header = f"{'Symbol':<12} {'Forecast':^10} {'Prob%':>10}"
         
-        print("-" * 85)
+        print("-" * 40)
         print(header)
-        print("-" * 85)
+        print("-" * 40)
 
         for r in filtered_data:
-            # ใช้ forecast ที่ filter แล้ว (ฝั่งที่ชนะชัดเจน)
             forecast = r.get('forecast_label', '')
-            if forecast == 'UP':
-                chance = "🟢 UP"
-                prob_val = r.get('bull_prob', 50)
-            elif forecast == 'DOWN':
-                chance = "🔴 DOWN"
-                prob_val = r.get('bear_prob', 50)
-            else:
-                continue  # ไม่แสดง SIDE (ไม่ควรมีอยู่แล้วเพราะ filter แล้ว)
+            chance = "P" if forecast == 'UP' else "N"
+            prob_val = r.get('acc_score', 50.0)
             
-            # Get stats - จำนวนครั้งที่ match กับข้อมูลในอดีต
-            matches = r.get('matches', 0)
-            total_bars = r.get('total_bars', 0)
-            if pd.isna(total_bars): total_bars = 0
-            
-            pat_label = r.get('pattern', r.get('pattern_display', '???'))
-            print(f"{r['symbol']:<12} {pat_label:^10} {chance:<15} {matches:>8} {int(total_bars):>12} {prob_val:>7.1f}%")
-        print("-" * 85)
+            print(f"{r['symbol']:<12} {chance:^10} {prob_val:>9.1f}%")
+        print("-" * 40)
 
     # Export ALL results to CSV (both tradeable and not — for analysis/debug)
     df = pd.DataFrame(results)

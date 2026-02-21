@@ -1,6 +1,7 @@
 # ⚡ Quick Reference - คำสั่งที่ใช้บ่อย
 
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-22  
+**Version:** V4.4
 
 ---
 

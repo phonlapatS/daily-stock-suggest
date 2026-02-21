@@ -29,8 +29,10 @@ COLUMNS = [
     'pattern',        # Pattern ที่ตรวจจับ
     'forecast',       # UP / DOWN
     'prob',           # Probability %
-    'conf',           # Confidence %
-    'stats',          # จำนวนครั้ง
+    'total_p',        # Total Positive Weight
+    'total_n',        # Total Negative Weight
+    'stats',          # จำนวนครั้ง (Total Weight)
+    'breakdown',      # Suffix-level breakdown
     'price_at_scan',  # ราคา ณ เวลาสแกน
     'actual',         # UP / DOWN / PENDING
     'price_actual',   # ราคาวันถัดไป
@@ -70,54 +72,21 @@ def log_forecast(results, group_info=None):
     
     records = []
     for r in results:
-        # Determine forecast direction and prob
-        # V6.0: ใช้ prob ของฝั่งที่ชนะ (สูงกว่า) แทน avg_return
-        bull_prob = r.get('bull_prob', 50)
-        bear_prob = r.get('bear_prob', 50)
-        max_prob = max(bull_prob, bear_prob)
-        
-        # V6.0: ตรวจสอบว่า prob > MIN_PROB_THRESHOLD (ควร filter แล้วใน main.py แต่ double-check)
-        # Import threshold from config if available
-        try:
-            import config
-            min_prob_threshold = getattr(config, 'MIN_PROB_THRESHOLD', 50.0)
-        except:
-            min_prob_threshold = 50.0
-        
-        # Skip if prob <= threshold (should not happen but double-check)
-        if max_prob <= min_prob_threshold:
-            continue
-        
-        # ใช้ prob ของฝั่งที่ชนะ (สูงกว่า) - ใช้ max_prob เพื่อความถูกต้อง
-        if bull_prob > bear_prob:
-            forecast = 'UP'
-            prob = max_prob  # Use max_prob (bull_prob in this case)
-        elif bear_prob > bull_prob:
-            forecast = 'DOWN'
-            prob = max_prob  # Use max_prob (bear_prob in this case)
-        else:
-            # Fallback: ใช้ avg_return ถ้า prob เท่ากัน
-            avg_ret = r.get('avg_return', 0)
-            if avg_ret > 0:
-                forecast = 'UP'
-                prob = max_prob
-            elif avg_ret < 0:
-                forecast = 'DOWN'
-                prob = max_prob
-            else:
-                forecast = 'NEUTRAL'
-                prob = max_prob  # Use max_prob even for neutral
+        forecast = r.get('forecast_label', 'NEUTRAL')
+        prob = r.get('acc_score', 50.0)
         
         record = {
             'scan_date': today,
             'target_date': tomorrow,
             'symbol': r.get('symbol', 'Unknown'),
-            'exchange': r.get('exchange', 'SET'),  # Use actual exchange, not group name
-            'pattern': r.get('pattern_display', ''),
+            'exchange': r.get('exchange', 'SET'),
+            'pattern': r.get('pattern', ''),
             'forecast': forecast,
             'prob': round(prob, 1),
-            'conf': round(r.get('conf', 0), 1),
-            'stats': r.get('matches', 0),
+            'total_p': r.get('total_p', 0),
+            'total_n': r.get('total_n', 0),
+            'stats': r.get('total_events', 0),
+            'breakdown': r.get('breakdown', ''),
             'price_at_scan': round(r.get('price', 0), 2),
             'actual': 'PENDING',
             'price_actual': None,

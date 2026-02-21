@@ -1,7 +1,7 @@
 # 📖 คู่มือระบบ PredictPlus1 - User Manual
 
-**Last Updated:** 2026-02-13  
-**Version:** V12.4
+**Last Updated:** 2026-02-22  
+**Version:** V4.4
 
 ---
 
@@ -112,11 +112,11 @@ python scripts/calculate_metrics.py
 - Console report (4 ตาราง)
 - `data/symbol_performance.csv`
 
-**เกณฑ์ Display:**
-- **THAI:** Prob >= 60%, RRR >= 1.2, Count >= 30
-- **US:** Prob >= 55%, RRR >= 1.2, Count >= 15
-- **CHINA/HK:** Prob >= 55%, RRR >= 1.2, Count >= 15
-- **TAIWAN:** Prob >= 53%, RRR >= 1.25, Count 25-150
+**เกณฑ์ Display (V4.4 Simplified):**
+- **THAI:** Prob >= 55% (Consensus), Min Stats 30 per suffix
+- **US:** Prob >= 55% (Consensus), Min Stats 30 per suffix
+- **CHINA/HK:** Prob >= 55% (Consensus), Min Stats 30 per suffix
+- **TAIWAN:** Prob >= 55% (Consensus), Min Stats 30 per suffix
 
 ---
 

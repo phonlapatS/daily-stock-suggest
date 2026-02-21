@@ -24,158 +24,65 @@ class TrendMomentumEngine(BasePatternEngine):
         low = df['low']
         volume = df['volume']
         
-        # STRICT INTRADAY LOGIC: (Close - Open) / Open
-        # Measures "Candle Body Strength" (Who won the day?)
+        # STRICT INTRADAY LOGIC
         pct_change = ((close - open_price) / open_price)
-        
         exchange = settings.get('exchange', '').upper()
         
-        # Market Detection
         is_us = any(ex in exchange for ex in ['NASDAQ', 'NYSE', 'US', 'CME', 'COMEX', 'NYMEX'])
         is_tw = any(ex in exchange for ex in ['TWSE', 'TW'])
         
-        # 1. ADX FILTER (Pre-scan: Must be trending)
+        # 1. ADX FILTER
         adx = calculate_adx(high, low, close)
         current_adx = adx.iloc[-1]
-        
         if (is_us or is_tw) and current_adx < 20:
             return []
 
-        # 2. TREND CONTEXT (for Regime-Aware history scan)
+        # 2. TREND CONTEXT
         sma50 = close.rolling(50).mean()
         current_trend = "BULL" if close.iloc[-1] > sma50.iloc[-1] else "BEAR"
         
-        # 3. THRESHOLD LOGIC (Dynamic SD with Market Floor)
-        min_floor = 0.006 if is_us else 0.005  # US: 0.6%, TW: 0.5%
+        # 3. THRESHOLD LOGIC
+        min_floor = 0.006 if is_us else 0.005
         effective_std = self.calculate_dynamic_threshold(pct_change, min_floor)
         current_std = effective_std.iloc[-1]
         
-        # Gate: If today's move is within threshold, no anomaly detected
         if abs(pct_change.iloc[-1]) < current_std:
             return []
             
-        # =====================================================
-        # Rule 2: Dynamic Lookback — Get Active Pattern
-        # (Cut at neutral day, only + and - characters)
-        # =====================================================
         active_pattern = self.get_active_pattern(pct_change, effective_std)
         if not active_pattern:
-            return []  # No active streak → no signal
-        
-        # Determine direction from LAST character
-        # Trend Following: RIDE the momentum
-        # + (Up anomaly) → LONG, - (Down anomaly) → SHORT
-        last_char = active_pattern[-1]
-        if last_char == '+':
-            direction = "LONG"
-        elif last_char == '-':
-            direction = "SHORT"
-        else:
             return []
-            
-        # US Market: LONG ONLY — ignore short signals
-        if is_us and direction == "SHORT":
-            return []
-        
-        # Volume context (informational tagging)
-        vol_adv = calculate_volume_adv(volume)
-        current_vol = volume.iloc[-1]
-        current_adv = vol_adv.iloc[-1]
-        
-        filter_tags = []
-        if is_us or is_tw:
-            filter_tags.append("ADX_FILTER")
-        
-        is_vol_spike = current_vol > (current_adv * 1.25)
-        
+
         # =====================================================
-        # Rule 3: Best Fit Selection (V7.2 — Hybrid Approach)
-        # Generate sub-patterns → query history in SAME trend regime
-        # Hybrid: Longest Context First + Confidence Tie-breaker
-        # Note: Lower thresholds for trend engine (regime-filtered = less data)
+        # V4.4: AGGREGATE VOTING (Winner-Takes-All)
         # =====================================================
-        TREND_MIN_COUNT = 15     # Bare minimum for trend-filtered data
-        TREND_STRONG_COUNT = 30  # Strong confidence for trend-filtered
-        MIN_PROB = 55.0          # Minimum prob% for marginal fallback
+        vote_result = self.aggregate_voting(
+            df, pct_change, effective_std, active_pattern, min_count=30,
+            sma50=sma50, current_trend=current_trend
+        )
         
-        sub_patterns = []
-        for i in range(len(active_pattern)):
-            sub = active_pattern[i:]
-            if sub:
-                sub_patterns.append(sub)
-        
-        fallback_candidate = None
-        
-        for sub_pat in sub_patterns:
-            length = len(sub_pat)
-            
-            # Context-Aware History Scan (same trend regime = Apples to Apples)
-            # Pass df to get Open/Close for Intraday Return
-            future_returns = self.get_pattern_stats(
-                df, pct_change, effective_std, sub_pat, length, sma50, current_trend
-            )
-            if not future_returns:
-                continue
-            
-            count = len(future_returns)
-            if count < TREND_MIN_COUNT:
-                continue
-            
-            stats = self.calculate_stats(future_returns, direction)
-            
-            result = {
-                'pattern': sub_pat,
-                'length': length,
-                'stats': stats,
-            }
-            
-            # Marginal Case (15 ≤ Count < 30 for trend)
-            if count < TREND_STRONG_COUNT:
-                if fallback_candidate is None:
-                    fallback_candidate = result
-                continue
-            
-            # Strong Case (Count ≥ 30 for trend)
-            if fallback_candidate is None:
-                best_result = result
-            elif stats['win_rate'] >= fallback_candidate['stats']['win_rate']:
-                best_result = result
-            else:
-                best_result = fallback_candidate
-            break
-        else:
-            # Loop finished without Strong — check fallback
-            if fallback_candidate and fallback_candidate['stats']['win_rate'] >= MIN_PROB:
-                best_result = fallback_candidate
-            else:
-                best_result = None
-        
-        if not best_result:
+        if not vote_result:
             return []
-        
-        pat_str = best_result['pattern']
-        stats = best_result['stats']
-        
-        # Quality Flag (V5.2: Late Filtering)
-        is_tradeable = self.check_trustworthy(stats, 60.0, 15)  # WR≥60%, Count≥15
-        
-        # Rule 1: Return SINGLE best-fit result (anti-overlapping)
+
+        # Quality Flag
+        stats_mock = {'win_rate': vote_result['prob'], 'total': vote_result['total_events']}
+        is_tradeable = self.check_trustworthy(stats_mock, 60.0, 15)
+
         results = [{
             'engine': 'TREND_MOMENTUM',
-            'pattern': pat_str,
-            'forecast': 'UP' if direction == "LONG" else "DOWN",
-            'prob': stats['win_rate'],
-            'rr': stats['rrr'],
-            'matches': stats['total'],
-            'avg_win': stats['avg_win'],
-            'avg_loss': stats['avg_loss'],
+            'pattern': active_pattern,
+            'forecast': vote_result['forecast'],
+            'prob': vote_result['prob'],
+            'total_p': vote_result['total_p'],
+            'total_n': vote_result['total_n'],
+            'total_events': vote_result['total_events'],
+            'breakdown': vote_result['breakdown'],
             'is_trend_follow': True,
             'is_tradeable': is_tradeable,
             'adx': round(current_adx, 1),
-            'vol_spike': is_vol_spike,
             'threshold': round(current_std * 100, 2),
-            'filter_tags': filter_tags,
-            'vol_target_size': None
+            'vol_target_size': None,
+            'rr': 1.0
         }]
             
         return results
