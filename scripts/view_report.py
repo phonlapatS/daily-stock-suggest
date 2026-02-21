@@ -71,32 +71,28 @@ def view_report(symbol):
         return
 
     # 4. Display Report
-    # Sort results by probability first, then matches
-    results.sort(key=lambda x: (x['prob'], x['matches_found']), reverse=True)
+    # Sort results by probability (acc_score)
+    results.sort(key=lambda x: x['acc_score'], reverse=True)
     
-    print_header(f"PART 1: MASTER PATTERN STATS (Tomorrow's Forecast) - {symbol}")
+    print_header(f"PART 1: MASTER PATTERN STATS (V4.4 Consensus) - {symbol}")
     print(f"Price: {df['close'].iloc[-1]:.2f}  |  Threshold: ±{results[0].get('threshold', 0):.2f}%")
-    print("-" * 100)
-    print(f"{'Pattern':<10} {'Category':<10} {'Chance':<10} {'Prob%':>8} {'Stats':>18} {'Exp.Move':>12}")
-    print("-" * 100)
+    print("-" * 120)
+    print(f"{'Pattern':<10} {'Forecast':<10} {'Prob%':>8} {'Weight (P/N)':>18} {'Voting Breakdown'}")
+    print("-" * 120)
     
     for res in results:
         # Format Data
         pattern_str = res['pattern']
-        category = "Cont." if pattern_str[-1] == pattern_str[-2] else "Rev."
+        direction = "🟢 UP" if res['forecast_label'] == "UP" else "🔴 DOWN"
+        prob_str = f"{res['acc_score']:.1f}%"
         
-        direction = "🟢 UP" if res['forecast'] == "UP" else "🔴 DOWN"
-        prob_str = f"{res['prob']:.1f}%"
+        # Stats: Total P / Total N (Total Events)
+        total_p = int(res.get('total_p', 0))
+        total_n = int(res.get('total_n', 0))
+        total_events = int(res.get('total_events', 0))
+        stats_str = f"{total_p}/{total_n} (T:{total_events})"
         
-        # Stats: Win/TotalMatches (TotalBars)
-        total_hist = 5000 # hardcoded or from config
-        stats_str = f"{res.get('win_count', int(res['matches_found'] * res['prob']/100))}/{res['matches_found']} ({total_hist})"
-        
-        # Exp Move
-        avg_ret = res['avg_win'] if res['forecast'] == "UP" else -res['avg_loss']
-        exp_move = f"{avg_ret:+.2f}%"
-        
-        print(f"{pattern_str:<10} {category:<10} {direction:<10} {prob_str:>8} {stats_str:>18} {exp_move:>12}")
+        print(f"{pattern_str:<10} {direction:<10} {prob_str:>8} {stats_str:>22}")
 
     print("-" * 100)
     
@@ -117,7 +113,7 @@ def view_report(symbol):
     print("(Note: Full historical streak stats integration coming in V3.5)")
 
 def view_all_report():
-    file_path = 'data/pattern_results.csv'
+    file_path = 'data/forecast_tomorrow.csv'
     if not os.path.exists(file_path):
         print("❌ No daily report data found. Please run 'python3 main.py' first.")
         return
@@ -127,15 +123,12 @@ def view_all_report():
         print("❌ No patterns found in the latest run.")
         return
 
-    # Sort by Probability (High -> Low), then Matches
-    # Use 'bull_prob' or 'bear_prob' depending on direction, but simpler to use max prob or existing sort column if any
-    # Let's create a 'display_prob' for sorting
-    df['display_prob'] = df[['bull_prob', 'bear_prob']].max(axis=1)
-    df = df.sort_values(by=['display_prob', 'matches'], ascending=[False, False])
+    # Sort by Probability (acc_score)
+    df = df.sort_values(by=['acc_score', 'total_events'], ascending=[False, False])
 
-    print_header("DAILY PATTERN REPORT (ALL SYMBOLS)")
-    print(f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Threshold':>12} {'Pattern':^10} {'Chance':<10} {'Prob%':>7} {'Stats':>18} {'Exp.Move':>10}")
-    print("-" * 110)
+    print_header("DAILY V4.4 CONSENSUS REPORT (ALL SYMBOLS)")
+    print(f"{'Symbol':<10} {'Price':>10} {'Chg%':>10} {'Thresh':>10} {'Pattern':^10} {'Forecast':<10} {'Prob%':>7} {'Weight(P/N) [Total]'}")
+    print("-" * 105)
 
     for _, row in df.iterrows():
         # Prepare Data
@@ -143,24 +136,18 @@ def view_all_report():
         price = row['price']
         chg = row['change_pct']
         thresh = row['threshold']
-        pattern = row['pattern_display']
+        pattern = row['pattern']
+        direction = "🟢 UP" if row['forecast_label'] == "UP" else "🔴 DOWN"
+        prob = row['acc_score']
         
-        # Forecast Logic
-        if row['avg_return'] > 0:
-            direction = "🟢 UP"
-            prob = row['bull_prob']
-            win = int(row['matches'] * prob / 100)
-        else:
-            direction = "🔴 DOWN"
-            prob = row['bear_prob']
-            win = int(row['matches'] * prob / 100)
-            
-        stats = f"{win}/{int(row['matches'])} ({int(row.get('total_bars', 5000))})"
-        exp_move = f"{row['avg_return']:+.2f}%"
+        total_p = int(row['total_p'])
+        total_n = int(row['total_n'])
+        total_events = int(row['total_events'])
+        stats = f"{total_p}/{total_n} [{total_events}]"
 
-        print(f"{sym:<10} {price:>10.2f} {chg:>9.2f}% {thresh:>11.2f}% {pattern:^10} {direction:<10} {prob:>6.0f}% {stats:>18} {exp_move:>10}")
+        print(f"{sym:<10} {price:>10.2f} {chg:>9.2f}% {thresh:>9.2f}% {pattern:^10} {direction:<10} {prob:>6.0f}% {stats:>20}")
     
-    print("-" * 110)
+    print("-" * 105)
     print(f"Total: {len(df)} symbols")
 
 if __name__ == "__main__":

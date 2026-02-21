@@ -785,20 +785,17 @@ def main():
                     # Group by (symbol, pattern, forecast)
                     for r in eligible:
                         symbol = r.get('symbol', '')
-                        pattern = r.get('pattern_display', '')
-                        # Determine forecast direction
-                        bull_prob = r.get('bull_prob', 50)
-                        bear_prob = r.get('bear_prob', 50)
-                        forecast = 'UP' if bull_prob > bear_prob else 'DOWN'
+                        pattern = r.get('pattern', '')
+                        forecast = r.get('forecast_label', 'UP')
                         key = (symbol, pattern, forecast)
                         dedup_dict[key].append(r)
                     
-                    # Select best (highest max_prob) for each group
+                    # Select best (highest acc_score) for each group
                     deduplicated = []
                     for key, records in dedup_dict.items():
                         if len(records) > 1:
-                            # Sort by max_prob descending, then by matches descending
-                            records.sort(key=lambda x: (x.get('_max_prob', 0), x.get('matches', 0)), reverse=True)
+                            # Sort by acc_score descending, then by total_events descending
+                            records.sort(key=lambda x: (x.get('acc_score', 0), x.get('total_events', 0)), reverse=True)
                             # Keep only the best one
                             deduplicated.append(records[0])
                         else:
@@ -842,7 +839,9 @@ def main():
                 if not _is_true_flag(r.get('is_tradeable', False)):
                     continue
                 
-                avg_ret = r['avg_return']
+                # V4.4: Use forecast_label for logging instead of direct avg_return
+                forecast_label = r.get('forecast_label', 'UP')
+                prob = r.get('acc_score', 0)
                 
                 # Market mapping for logging
                 group = r['group']
@@ -855,7 +854,7 @@ def main():
 
                 stock_logger.log_trade(
                     symbol=r['symbol'], 
-                    signal=("UP" if avg_ret > 0 else "DOWN"), 
+                    signal=forecast_label, 
                     entry_price=r['price'],
                     market=m_name,
                     silent=True
@@ -889,8 +888,8 @@ def main():
                 
             market_stats[m_key]['tradeable'] += 1
             
-            avg_ret = r['avg_return']
-            prob = r['bull_prob'] if avg_ret > 0 else r['bear_prob']
+            forecast_label = r.get('forecast_label', 'UP')
+            prob = r.get('acc_score', 0)
             
             # Track best pattern per market
             if prob > market_stats[m_key]['best_prob']:
@@ -898,8 +897,10 @@ def main():
                 pat_display = r.get('pattern', r.get('pattern_display', '???'))
                 market_stats[m_key]['best_pattern'] = f"{r['symbol']} ({pat_display}) {prob:.0f}%"
 
-            if avg_ret > 0: market_stats[m_key]['up'] += 1
-            else: market_stats[m_key]['down'] += 1
+            if forecast_label == 'UP': 
+                market_stats[m_key]['up'] += 1
+            else: 
+                market_stats[m_key]['down'] += 1
 
         # Print Heartbeat Table
         if market_stats:

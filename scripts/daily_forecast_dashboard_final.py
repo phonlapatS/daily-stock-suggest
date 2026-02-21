@@ -34,8 +34,9 @@ def get_tomorrow_forecasts():
         return pd.DataFrame()
     
     # คำนวณข้อมูลเพิ่มเติม
-    tomorrow_forecasts['change_pct_abs'] = abs(tomorrow_forecasts['change_pct'])
-    tomorrow_forecasts['threshold_display'] = tomorrow_forecasts['threshold'].apply(lambda x: f"±{x:.2f}%")
+    tomorrow_forecasts['threshold_display'] = tomorrow_forecasts.apply(
+        lambda x: f"±{x.get('threshold', 0):.2f}%", axis=1
+    )
     
     return tomorrow_forecasts
 
@@ -193,30 +194,18 @@ def display_executive_dashboard():
                 for _, row in exchange_data.iterrows():
                     symbol = row['symbol']
                     price = row['price_at_scan']
-                    change_pct = row['change_pct']
-                    threshold = row.get('threshold', change_pct * 1.5)  # Fallback to 1.5x change_pct
-                    threshold_display = f"±{threshold:.2f}%"
+                    threshold = row.get('threshold', 0)
                     pattern = row['pattern']
                     chance = format_chance_direction(row['forecast'])
                     prob = f"{row['prob']:.0f}%"
                     
-                    # Parse stats from stats column - แยกจำนวน wins และ total bars
-                    stats = row['stats']
-                    if '/' in stats and '(' in stats and ')' in stats:
-                        # Extract wins and total from "100/100 (5000)"
-                        wins_part = stats.split('/')[0].strip()
-                        total_part = stats.split('(')[1].replace(')', '').strip()
-                        stats_display = f"{wins_part} ({total_part})"
-                    elif stats.isdigit():
-                        # Case where stats is just wins number like "54"
-                        stats_display = f"{stats} (5000)"  # Default total bars
-                    else:
-                        stats_display = stats
+                    # V4.4 Stats handling
+                    total_p = int(row.get('total_p', 0))
+                    total_n = int(row.get('total_n', 0))
+                    total_events = int(total_p + total_n)
+                    stats_display = f"{total_p}/{total_n} [{total_events}]"
                     
-                    # Expected move (placeholder - ควรคำนวณจากข้อมูลจริง)
-                    exp_move = format_number(row['change_pct'] * 0.8)  # Simple estimate
-                    
-                    print(f"{symbol:12} {price:8.1f}   {change_pct:+6.2f}%   {threshold:10}   {pattern:8}    {chance:9}     {prob:5}       {stats_display:10}   {exp_move:>9}")
+                    print(f"{symbol:12} {price:8.1f}   {threshold:10.2f}%   {pattern:8}    {chance:9}     {prob:5}       {stats_display:15}")
                 
                 print()
     

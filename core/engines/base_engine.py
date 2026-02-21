@@ -205,21 +205,20 @@ class BasePatternEngine:
             if p_count == 0 and n_count == 0:
                 continue
 
-            # 3. Determine Local Winner (Winner-Takes-All)
+            # 3. Global Tally (Weighted Average)
+            # Sum BOTH counts into global weights to get a true statistical average
+            total_p_weight += p_count
+            total_n_weight += n_count
+            
+            # Local winner identifier for breakdown display
             if p_count > n_count:
-                total_p_weight += p_count
-                winner = 'P'
-                winner_count = p_count
+                local_winner = 'P'
             elif n_count > p_count:
-                total_n_weight += n_count
-                winner = 'N'
-                winner_count = n_count
+                local_winner = 'N'
             else:
-                # Tie: ignore or skip
-                winner = 'TIE'
-                winner_count = 0
+                local_winner = 'TIE'
                 
-            suffix_details.append(f"{sub_pat}:{p_count}/{n_count}({winner})")
+            suffix_details.append(f"{sub_pat}:{p_count}/{n_count}({local_winner})")
 
         # Handle case where no suffixes were found
         if total_p_weight == 0 and total_n_weight == 0:
