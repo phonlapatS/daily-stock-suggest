@@ -139,17 +139,16 @@ def show_all_forecasts(results):
             continue
         
         print(f"\n{title}")
-        print("-" * 110)
-        header = f"{'Symbol':<12} {'Pattern':^10} {'Bull%':>8} {'Bear%':>8} {'Matches':>8} {'Total Bars':>12} {'Tradeable':>10} {'Price':>10}"
+        print("-" * 100)
+        header = f"{'Symbol':<12} {'Forecast':^10} {'Bull%':>8} {'Bear%':>8} {'Matches':>8} {'Total Bars':>12} {'Tradeable':>10} {'Price':>10}"
         print(header)
-        print("-" * 110)
+        print("-" * 100)
         
-        # Sort by symbol and pattern
-        filtered_results.sort(key=lambda x: (x.get('symbol', ''), x.get('pattern', '')))
+        # Sort by symbol
+        filtered_results.sort(key=lambda x: x.get('symbol', ''))
         
         for r in filtered_results:
             symbol = r.get('symbol', 'Unknown')
-            pattern = r.get('pattern', '???')
             prob = r.get('acc_score', 50.0)
             forecast = r.get('forecast_label', 'NEUTRAL')
             matches = r.get('total_events', 0)
@@ -158,9 +157,9 @@ def show_all_forecasts(results):
             
             tradeable_str = "✅ YES" if is_tradeable else "❌ NO"
             
-            print(f"{symbol:<12} {pattern:^10} {forecast:^10} {prob:>7.1f}% {int(matches):>8} {tradeable_str:>10} {price:>10.2f}")
+            print(f"{symbol:<12} {forecast:^10} {prob:>7.1f}% {int(matches):>8} {tradeable_str:>10} {price:>10.2f}")
         
-        print("-" * 110)
+        print("-" * 100)
         filtered_count = len(filtered_results)
         skipped_count = len(group_results) - filtered_count
         if skipped_count > 0:
@@ -266,24 +265,24 @@ def _show_pending_verified_forecasts():
                 # Pending forecasts
                 if data['pending']:
                     print(f"\n{title} - ⏳ PENDING")
-                    print(f"{'Symbol':<12} {'Pattern':^10} {'Forecast':<15} {'Prob%':>8} {'Matches':>10} {'Target Date':<12}")
-                    print("-" * 75)
+                    print(f"{'Symbol':<12} {'Forecast':<15} {'Prob%':>8} {'Matches':>10} {'Target Date':<12}")
+                    print("-" * 65)
                     for f in sorted(data['pending'], key=lambda x: (x['prob'], x['matches']), reverse=True):
                         forecast_str = f"🟢 {f['forecast']}" if f['forecast'] == 'UP' else f"🔴 {f['forecast']}"
-                        print(f"{f['symbol']:<12} {f['pattern']:^10} {forecast_str:<15} {f['prob']:>7.1f}% {f['matches']:>10} {f['target_date']:<12}")
-                    print("-" * 75)
+                        print(f"{f['symbol']:<12} {forecast_str:<15} {f['prob']:>7.1f}% {f['matches']:>10} {f['target_date']:<12}")
+                    print("-" * 65)
                 
                 # Verified forecasts (แสดงเฉพาะที่ verify แล้ววันนี้)
                 if data['verified']:
                     print(f"\n{title} - ✅ VERIFIED")
-                    print(f"{'Symbol':<12} {'Pattern':^10} {'Forecast':<15} {'Actual':<15} {'Result':<10} {'Prob%':>8}")
-                    print("-" * 75)
+                    print(f"{'Symbol':<12} {'Forecast':<15} {'Actual':<15} {'Result':<10} {'Prob%':>8}")
+                    print("-" * 65)
                     for f in sorted(data['verified'], key=lambda x: x['symbol']):
                         forecast_str = f"🟢 {f['forecast']}" if f['forecast'] == 'UP' else f"🔴 {f['forecast']}"
                         actual_str = f"🟢 {f['actual']}" if f['actual'] == 'UP' else f"🔴 {f['actual']}"
                         result_str = "✅ YES" if f['correct'] == 1 else "❌ NO"
-                        print(f"{f['symbol']:<12} {f['pattern']:^10} {forecast_str:<15} {actual_str:<15} {result_str:<10} {f['prob']:>7.1f}%")
-                    print("-" * 75)
+                        print(f"{f['symbol']:<12} {forecast_str:<15} {actual_str:<15} {result_str:<10} {f['prob']:>7.1f}%")
+                    print("-" * 65)
             
             print("=" * 90)
     except Exception as e:
@@ -355,22 +354,26 @@ def generate_report(results):
         filtered_data = list(seen_keys.values())
         
         # 3. Sorting (Prob DESC)
-        filtered_data.sort(key=lambda x: -x['_sort_prob'])
+        filtered_data.sort(key=lambda x: -x.get('prob', 0))
         
-        # 4. Table Layout - V4.4 Simplified Voting Summary
-        header = f"{'Symbol':<12} {'Forecast':^10} {'Prob%':>10}"
+        # 4. Table Layout - User's Requested Concise Format
+        header = f"{'Symbol':<12} {'Predict':^12} {'Prob%':>10} {'Consensus (P/N)':>18}"
         
-        print("-" * 40)
+        print("-" * 55)
         print(header)
-        print("-" * 40)
+        print("-" * 55)
 
         for r in filtered_data:
-            forecast = r.get('forecast_label', '')
-            chance = "P" if forecast == 'UP' else "N"
-            prob_val = r.get('acc_score', 50.0)
+            forecast = r.get('forecast', r.get('forecast_label', ''))
+            chance = "🟢 UP" if forecast == 'UP' else "🔴 DOWN"
             
-            print(f"{r['symbol']:<12} {chance:^10} {prob_val:>9.1f}%")
-        print("-" * 40)
+            prob_val = r.get('prob', r.get('acc_score', 0.0))
+            p_w = int(r.get('total_p', 0))
+            n_w = int(r.get('total_n', 0))
+            consensus_str = f"{p_w} vs {n_w}"
+            
+            print(f"{r['symbol']:<13} {chance:^12} {prob_val:>9.1f}% {consensus_str:>16}")
+        print("-" * 57)
 
     # Export ALL results to CSV (both tradeable and not — for analysis/debug)
     df = pd.DataFrame(results)
@@ -813,52 +816,10 @@ def main():
                 print(f"⚠️ Forward log failed: {e}")
         
         # -------------------------------------------------------------
-        # 4. Global Homework Check (Check ALL files in logs)
+        # 4. Global Performance Check (N+1 Accuracy)
         # -------------------------------------------------------------
-        # Note: ใช้ price_map จาก all_results เท่านั้น (ผลใหม่)
-        if all_results:
-            from scripts.stock_logger import StockLogger
-            stock_logger = StockLogger()
-            
-            # Scan ALL market subdirectories for OPEN trades to close with today's price
-            if os.path.exists(stock_logger.log_dir):
-                for m_dir in [d for d in os.listdir(stock_logger.log_dir) if os.path.isdir(os.path.join(stock_logger.log_dir, d))]:
-                    full_m_dir = os.path.join(stock_logger.log_dir, m_dir)
-                    for f in os.listdir(full_m_dir):
-                        if f.endswith(".csv"):
-                            # Extract symbol from filename (handling sanitized names)
-                            symbol = f.replace(".csv", "").split("_")[0]
-                            if symbol in price_map:
-                                stock_logger.close_trade(symbol, price_map[symbol], market=m_dir, silent=True)
-
-            # -------------------------------------------------------------
-            # 5. Log New Signals (Background Operation)
-            # -------------------------------------------------------------
-            # V5.0: Single Gate — log only is_tradeable signals
-            for r in all_results:
-                if not _is_true_flag(r.get('is_tradeable', False)):
-                    continue
-                
-                # V4.4: Use forecast_label for logging instead of direct avg_return
-                forecast_label = r.get('forecast_label', 'UP')
-                prob = r.get('acc_score', 0)
-                
-                # Market mapping for logging
-                group = r['group']
-                if "THAI" in group: m_name = "SET"
-                elif "US" in group: m_name = "NASDAQ"
-                elif "CHINA" in group: m_name = "HKEX"
-                elif "TAIWAN" in group: m_name = "TWSE"
-                elif "METALS" in group: m_name = "GOLD"
-                else: m_name = "Other"
-
-                stock_logger.log_trade(
-                    symbol=r['symbol'], 
-                    signal=forecast_label, 
-                    entry_price=r['price'],
-                    market=m_name,
-                    silent=True
-                )
+        # V4.4: All forward testing and verification is handled by 
+        # core.performance.verify_forecast() and log_forecast() above.
         
         # -------------------------------------------------------------
         # 6. Market Health Summary (The "Heartbeat")
@@ -929,9 +890,7 @@ def main():
             # 7. Final Status
             # -------------------------------------------------------------
             if all_results:
-                from scripts.stock_logger import StockLogger
-                stock_logger = StockLogger()
-                print(f"✅ All systems updated. Logs synced to {stock_logger.log_dir}")
+                print(f"✅ All systems updated. Results synced to logs/performance_log.csv")
 
     else:
         print("\n❌ No matching patterns found in any asset (and no CSV data available).")

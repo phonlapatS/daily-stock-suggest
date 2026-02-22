@@ -165,82 +165,96 @@ class BasePatternEngine:
         # No sub-pattern met Count >= min_count → No Trade / Pass
         return None
 
-    def aggregate_voting(self, df, pct_change, effective_std, active_pattern, min_count=30, **kwargs):
+    def aggregate_voting(self, df, pct_change, effective_std, active_pattern, min_count=15, **kwargs):
         """
-        V4.4: Winner-Takes-All Per-Suffix Voting Logic.
-        1. Break active_pattern into suffixes (e.g., '++-', '+-', '-')
-        2. For each suffix, get historical Up/Down counts
-        3. Identify the 'local winner' for that suffix
-        4. Add ONLY the winner's count to the global tally
-        5. Return consolidated result
+        V4.5: FINAL LOGIC — AVERAGE OF WINNING PATTERNS
+        1. Break active_pattern into suffixes.
+        2. Determine local winner (P/N) for each pattern. Discard ties.
+        3. TOTAL_P = SUM(p_win_i), TOTAL_N = SUM(n_win_i).
+        4. WINNING_SIDE = P if TOTAL_P > TOTAL_N else N.
+        5. FINAL_AVERAGE = average(winning_patterns_values).
         """
         if not active_pattern:
             return None
-            
-        total_p_weight = 0
-        total_n_weight = 0
-        suffix_details = []
 
-        # Generate sub-patterns from longest to shortest
-        # e.g., '++-' -> ['++-', '+-', '-']
+        pattern_decisions = []
+        
+        # 1. Break into suffixes
         suffixes = []
         for i in range(len(active_pattern)):
             sub = active_pattern[i:]
             if sub:
                 suffixes.append(sub)
 
+        # 2. Local Pattern Decision & Weighted Aggregation
+        p_winners = [] # List of (name, winning_count, other_side_count)
+        n_winners = []
+        all_decisions = [] # For full breakdown display
+        
         for sub_pat in suffixes:
-            # 1. Get history for this suffix (using child-implemented get_pattern_stats)
-            # Reversion: needs df, pct, std, pat, len
-            # Trend: needs df, pct, std, pat, len, sma50, trend
             future_returns = self.get_pattern_stats(df, pct_change, effective_std, sub_pat, len(sub_pat), **kwargs)
             
-            if not future_returns or len(future_returns) < min_count:
+            if not future_returns:
                 continue
                 
-            # 2. Count P (+) and N (-)
-            p_count = sum(1 for r in future_returns if r > 0)
-            n_count = sum(1 for r in future_returns if r < 0)
+            p_count_i = sum(1 for r in future_returns if r > 0)
+            n_count_i = sum(1 for r in future_returns if r < 0)
+            total_i = p_count_i + n_count_i
             
-            if p_count == 0 and n_count == 0:
-                continue
-
-            # 3. Global Tally (Weighted Average)
-            # Sum BOTH counts into global weights to get a true statistical average
-            total_p_weight += p_count
-            total_n_weight += n_count
+            # Label as Weak if count < min_count
+            is_weak = total_i < min_count
+            tag_suffix = "W" if is_weak else ""
             
-            # Local winner identifier for breakdown display
-            if p_count > n_count:
-                local_winner = 'P'
-            elif n_count > p_count:
-                local_winner = 'N'
+            if p_count_i > n_count_i:
+                if not is_weak:
+                    p_winners.append((sub_pat, p_count_i, n_count_i))
+                all_decisions.append(f"{sub_pat}:{p_count_i}/{n_count_i}(P{tag_suffix})")
+            elif n_count_i > p_count_i:
+                if not is_weak:
+                    n_winners.append((sub_pat, n_count_i, p_count_i))
+                all_decisions.append(f"{sub_pat}:{n_count_i}/{p_count_i}(N{tag_suffix})")
             else:
-                local_winner = 'TIE'
-                
-            suffix_details.append(f"{sub_pat}:{p_count}/{n_count}({local_winner})")
+                # Tie
+                all_decisions.append(f"{sub_pat}:{p_count_i}/{n_count_i}(T{tag_suffix})")
 
-        # Handle case where no suffixes were found
-        if total_p_weight == 0 and total_n_weight == 0:
+        if not p_winners and not n_winners:
             return None
 
-        # 4. Final Aggregation
-        total_weight = total_p_weight + total_n_weight
-        if total_p_weight >= total_n_weight:
+        # 3. Sum of winners ONLY (TOTAL_UP / TOTAL_DOWN)
+        total_up_win = sum(w[1] for w in p_winners)
+        total_down_win = sum(w[1] for w in n_winners)
+
+        # 4. Final Decision
+        if total_up_win > total_down_win:
             forecast = 'UP'
-            final_prob = (total_p_weight / total_weight) * 100
-        else:
+            # 5. Calculation Logic (Prob)
+            if not n_winners:
+                total_sum = sum(w[1] + w[2] for w in p_winners)
+                prob = (total_up_win / total_sum * 100) if total_sum > 0 else 0
+            else:
+                prob = (total_up_win / (total_up_win + total_down_win) * 100)
+            winning_count = total_up_win
+        elif total_down_win > total_up_win:
             forecast = 'DOWN'
-            final_prob = (total_n_weight / total_weight) * 100
+            if not p_winners:
+                total_sum = sum(w[1] + w[2] for w in n_winners)
+                prob = (total_down_win / total_sum * 100) if total_sum > 0 else 0
+            else:
+                prob = (total_down_win / (total_up_win + total_down_win) * 100)
+            winning_count = total_down_win
+        else:
+            return None # Tie = Discard
 
         return {
             'pattern': active_pattern,
             'forecast': forecast,
-            'prob': final_prob,
-            'total_p': total_p_weight,
-            'total_n': total_n_weight,
-            'total_events': total_weight,
-            'breakdown': "; ".join(suffix_details)
+            'prob': round(prob, 1), 
+            'avg_return': 0.0, 
+            'total_p': total_up_win,
+            'total_n': total_down_win,
+            'total_events': len(p_winners) + len(n_winners),
+            'winning_count': winning_count,
+            'breakdown': "; ".join(all_decisions)
         }
 
     def get_pattern_stats(self, prices, pct_change, effective_std, pattern_str, length, multiplier=1.0):
