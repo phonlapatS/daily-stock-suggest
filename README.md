@@ -91,193 +91,37 @@ python scripts/market_sentiment.py
 
 ---
 
-## 📖 Documentation
+## 📖 Documentation & Guides
 
-### 🆕 Complete System Manual (V4.4)
-- **[COMPLETE_SYSTEM_MANUAL.md](COMPLETE_SYSTEM_MANUAL.md)** - ⭐ **คู่มือระบบฉบับสมบูรณ์** (แนะนำให้อ่านก่อน)
-  - Flow การทำงานแบบละเอียด
-  - คำสั่งทั้งหมด (Complete Command Reference)
-  - Risk Management Parameters
-  - Troubleshooting Guide
+To keep the workspace clean and efficient, all system documentation has been consolidated into two main balanced files:
 
-### User Manuals
-- **[User Manual](docs/USER_MANUAL.md)** - คู่มือระบบครบถ้วน (คำสั่งทั้งหมด)
-- **[Quick Reference](docs/QUICK_REFERENCE.md)** - คำสั่งที่ใช้บ่อย
-- **[Project Master Manual](docs/PROJECT_MASTER_MANUAL.md)** - คู่มือระบบฉบับสมบูรณ์
-- **[Forward Testing Guide](docs/FORECAST_VS_FORWARD_TESTING_ANALYSIS.md)** - คู่มือ Forward Testing
-- **[Multi-Market Schedule](docs/MULTI_MARKET_SCHEDULE.md)** - ตารางเวลารันระบบหลายตลาด
-- **[Risk Management Summary](RISK_MANAGEMENT_SUMMARY.md)** - Risk Management Parameters โดยประเทศ
-
-### Key Commands
-
-```bash
-# Main System
-python main.py                                    # Run full prediction system
-python scripts/check_forward_testing.py          # Check forward testing results
-python scripts/auto_scheduler.py                  # Auto scheduler
-
-# Backtest
-python scripts/backtest.py --full --bars 5000    # Full backtest (5000 bars)
-python scripts/backtest.py --full --bars 5000 --group GROUP_A_THAI  # Specific market
-
-# Calculate Metrics
-python scripts/calculate_metrics.py              # Calculate performance metrics
-
-# View Reports
-python scripts/view_report.py SYMBOL             # View report for specific symbol
-python scripts/view_report.py --all              # View all reports
-```
-
-**ดูรายละเอียดเพิ่มเติม:** [docs/USER_MANUAL.md](docs/USER_MANUAL.md)
+*   📘 **[SYSTEM MASTER HANDBOOK](file:///e:/PredictPlus1/PredictPlus1_SYSTEM_MASTER_HANDBOOK.md)** — technical patterns, risk logic, and evolution history.
+*   📜 **[OPERATIONAL COMMANDS MANUAL](file:///e:/PredictPlus1/PredictPlus1_OPERATIONAL_MANUAL.md)** — detailed CLI usage, backfilling, and maintenance.
+*   🕰️ **[VERSION HISTORY](file:///e:/PredictPlus1/VERSION_HISTORY.md)** — log of all changes from V1.0 to V4.4.7.
 
 ---
 
-## 💡 Concept: Risk Management-Based System
+## ⚡ Quick Command Reference
 
-### 1. Pattern Matching (V4.4 Aggregate Voting)
-- **Dynamic Streak:** Scans backwards until neutral (No fixed length)
-- **Consensus Voting:** Winner-Takes-All for each suffix level
-- **Min Samples:** Each suffix requires >= 30 matches to vote
-- **Threshold:** Market-specific (Thai: 1.0x, US: 0.9x, TW/CN: 0.9x)
-- **Statistics:** Consolidated probability from all winning suffixes
-
-### 2. Risk Management (Core Focus)
-- **Stop Loss:** 1.5-2.0% (Fixed, market-specific)
-- **Take Profit:** 3.5-5.0% (Fixed, market-specific)
-- **Trailing Stop:** Enabled (Activate at 1.5%, Keep 50% of peak)
-- **Position Sizing:** Based on Prob% and RRR
-- **Production Mode:** Slippage, Commission, Gap Risk, Liquidity Filter
-
-### 3. Forward Testing System
-- **Predict N+1:** Forecast tomorrow's direction
-- **Automatic Verification:** Verify predictions after market close
-- **Performance Logging:** Complete logs for retrospective analysis
-- **Accuracy Tracking:** Track prediction accuracy by pattern
-
-### 4. Market-Specific Display Criteria
-- **THAI:** Prob >= 60%, RRR >= 1.3, Count >= 30 (High frequency + High accuracy)
-- **US:** Prob >= 60%, RRR >= 1.5, Count >= 15 (Quality over quantity)
-- **CHINA/HK:** Prob >= 60%, RRR >= 1.2, Count >= 15
-- **TAIWAN:** Prob >= 50%, RRR >= 1.0, Count >= 15
-- **METALS (30min):** Prob >= 40%, RRR >= 0.75, Count >= 20
-- **METALS (15min):** Prob >= 25%, RRR >= 0.8, Count >= 20
+| Category | Command |
+| :--- | :--- |
+| **New Scan** | `python main.py` |
+| **View Report** | `python scripts/core_reports/view_report.py ALL` |
+| **Verify Results** | `python scripts/core_reports/check_forward_testing.py --verify` |
+| **Check Stats** | `python scripts/analysis/calculate_performance.py` |
+| **Dashboard** | `python scripts/core_reports/daily_forecast_dashboard.py` |
 
 ---
 
-## 📈 Changelog
-
-### v4.4 (2026-02-22) - Current
-- **Aggregate Voting Engine:** Implemented consensus-based prediction model.
-- **Winner-Takes-All Consensus:** Suffix-level voting replaces "Best Fit" selection.
-- **Dynamic Streak Extraction:** Pattern length now adjusts automatically to the current streak.
-- **Statistical Gatekeeper:** Rigid requirement of 30+ samples per suffix for voting.
-- **Reporting Overhaul:** Simplified terminal display and detailed CSV breakdown logging.
-
-### v4.1 (2026-02-14)
-- **Forward Testing System:** Predict N+1 with automatic verification
-- **Auto Scheduler:** Multi-market support with optimal timing
-- **Market Time Management:** Smart skip logic for market close times
-- **Performance Logging:** Complete forward testing logs
-- **Risk Management Focus:** Stop Loss, Take Profit, Trailing Stop, Position Sizing
-- **Production Mode:** Slippage, Commission, Gap Risk, Liquidity Filter
-- **Intraday Metals Support:** Gold & Silver 15min/30min with separated logic
-- **Logic Separation:** 15min and 30min use different rolling windows and max_hold
-- **Strategy Differentiation:** Gold uses TREND_FOLLOWING, Silver uses MEAN_REVERSION
-- **Parameter Optimization:** Market-specific min_prob, min_stats, and fixed_threshold
-- **Display Criteria:** Separate criteria for 15min and 30min timeframes
-- **Bug Fixes:** Fixed calculate_metrics.py indentation error, improved error handling
-
-### v3.4 Final (2026-02-07)
-- **Hybrid Threshold:** Implemented market-specific logic (Dynamic vs Fixed).
-- **Extended Validation:** 5,000-Bar Backtest confirmed system robustness.
-- **Reporting:** 4-Table Report optimized for clarity (Signal Count & RRR Focus).
-
-### v3.1 (2026-01-21)
-- **Strict Logic:** FLAT days break streaks.
-- **Hybrid Threshold:** `Max(20d SD, 0.5 * 1y SD)`.
+## 💡 Core Philosophy: V4.4.7 Aggregate Voting
+PredictPlus1 V4.4.7 moves away from single-pattern selection and uses **Aggregate Voting (Consensus)**. By analyzing multiple suffix levels (1-day to 7-day patterns) and enforcing a **30-sample minimum**, the system provides high-confidence directional forecasts backed by statistical reliability.
 
 ---
 
-## 🔧 Installation
-
-### Requirements
-```bash
-pip install -r requirements.txt
-```
-
-### Environment Variables
-Create a `.env` file with:
-```
-TV_USERNAME=your_tradingview_username
-TV_PASSWORD=your_tradingview_password
-TV_SESSIONID=your_session_id (optional)
-```
+## 🔧 Installation & Setup
+1.  **Requirements:** `pip install -r requirements.txt`
+2.  **Credentials:** Set up `TV_USERNAME` and `TV_PASSWORD` in a `.env` file.
+3.  **Bootstrap:** Run `python scripts/backfill/generate_master_stats.py` to build the initial pattern database (recommended once).
 
 ---
-
-## 📊 System Architecture
-
-```
-main.py
-├── Data Fetching (TradingView API)
-├── Pattern Matching (3-8 days dynamic)
-├── Statistics Calculation (Prob, RRR, Count)
-├── Risk Management (SL, TP, Trailing Stop)
-├── Forward Testing (Predict N+1, Verify)
-└── Report Generation (Daily predictions)
-```
-
----
-
-## 🎯 Key Features
-
-### Forward Testing
-- **Predict Tomorrow:** Forecast next day direction
-- **Automatic Verification:** Verify after market close
-- **Performance Tracking:** Track accuracy by pattern
-- **Complete Logs:** Full history for analysis
-
-### Auto Scheduler
-- **Multi-Market Support:** Different schedules for different markets
-- **Optimal Timing:** Run after market close for accurate data
-- **Smart Skip Logic:** Skip if already scanned today
-
-### Risk Management
-- **Stop Loss:** Market-specific (1.5-2.0%)
-- **Take Profit:** Market-specific (3.5-5.0%)
-- **Trailing Stop:** Dynamic protection
-- **Position Sizing:** Based on probability and RRR
-
----
-
-## 📚 Additional Resources
-
-- **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)
-- **Branch:** [version-4.4](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.4)
-- **Documentation:** [docs/](docs/)
-- **Version History:** [docs/VERSION_HISTORY.md](docs/VERSION_HISTORY.md)
-
----
-
-## ⚠️ Important Notes
-
-1. **Market Close Timing:** Run the system **after market close** to get accurate close prices
-2. **Forward Testing:** Requires 3-4 days of data to get reliable accuracy results
-3. **Risk Management:** Always use proper risk management in real trading
-4. **Backtesting:** Results are based on historical data, past performance doesn't guarantee future results
-
----
-
-## 📝 License
-
-Developed for Quantitative Trading Research
-
----
-
-## 🤝 Contributing
-
-This is a research project. For questions or suggestions, please open an issue on GitHub.
-
----
-
-*Last Updated: 2026-02-22*
+*Last Updated: 2026-02-22 | V4.4.7 Production*

@@ -22,33 +22,35 @@ def run_script(script_name, description):
         return False
 
 def main():
-    print("🎯 STARTING DAILY ROUTINE V4.3")
-    print("   (Prediction -> Check -> Report -> Performance -> Dashboard)")
+    print("=" * 60)
+    print("🎯 PREDICT N+1 MASTER ROUTINE - V4.4.7")
+    print("   (Scan + Verify -> Report -> Dashboard)")
+    print("=" * 60)
     
-    # 1. Prediction (Main)
-    if not run_script("main.py", "1. Market Scan & Prediction"):
+    # 1. Main Engine (Scan + Verify)
+    if not run_script("main.py", "1. Main Scan & Consensus Engine"):
         return
 
-    # 2. Performance Check (Yesterday's results)
-    if not run_script("scripts/check_forward_testing.py", "2. Verify Previous Predictions"):
-        return
+    # 2. Consensus Summary Report
+    # We use the shim or the direct path. Let's use the direct path with arguments.
+    print(f"\n{'='*60}")
+    print(f"🚀 RUNNING: 2. V4.4 Consensus Summary (ALL)")
+    print(f"   Script: scripts/core_reports/view_report.py")
+    print(f"{'='*60}")
+    try:
+        subprocess.run([sys.executable, "scripts/core_reports/view_report.py", "ALL"], check=True)
+    except Exception as e:
+        print(f"⚠️ Report display issue: {e}")
 
-    # 3. Forward Testing Report (Detailed logs)
-    if not run_script("scripts/forward_testing_report.py", "3. Generate Forward Test Report"):
-        return
+    # 3. Executive Dashboard
+    if not run_script("scripts/core_reports/daily_forecast_dashboard.py", "3. Executive Dashboard"):
+        print("⚠️ Dashboard could not be generated.")
 
-    # 4. Calculate Performance (P/L)
-    if not run_script("scripts/calculate_performance.py", "4. Calculate Performance (P/L)"):
-        return
-        
-    # 5. Dashboard (Overview)
-    if not run_script("scripts/daily_forecast_dashboard.py", "5. Daily Forecast Dashboard"):
-        return
-        
-    # Optional: Bonus Summary (N+1 Voting)
-    print("\n💡 Tip: Run 'python scripts/generate_summary.py' for N+1 Voting Analysis")
-
-    print("\n🎉 DAILY ROUTINE COMPLETED SUCCESSFULLY!")
+    print("\n" + "=" * 60)
+    print("🎉 V4.4.7 DAILY ROUTINE COMPLETED SUCCESSFULLY!")
+    print("   ผลลัพธ์ถูกบันทึกที่: data/forecast_tomorrow.csv")
+    print("   ประวัติถูกบันทึกที่: logs/performance_log.csv")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()

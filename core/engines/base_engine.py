@@ -177,8 +177,6 @@ class BasePatternEngine:
         if not active_pattern:
             return None
 
-        pattern_decisions = []
-        
         # 1. Break into suffixes
         suffixes = []
         for i in range(len(active_pattern)):
@@ -187,19 +185,19 @@ class BasePatternEngine:
                 suffixes.append(sub)
 
         # 2. Local Pattern Decision & Weighted Aggregation
-        p_winners = [] # List of (name, winning_count, other_side_count)
+        p_winners = [] # List of (sub_pat, win_count, lose_count, mean_return)
         n_winners = []
-        all_decisions = [] # For full breakdown display
+        all_decisions = [] 
         
         for sub_pat in suffixes:
             future_returns = self.get_pattern_stats(df, pct_change, effective_std, sub_pat, len(sub_pat), **kwargs)
-            
             if not future_returns:
                 continue
                 
             p_count_i = sum(1 for r in future_returns if r > 0)
             n_count_i = sum(1 for r in future_returns if r < 0)
             total_i = p_count_i + n_count_i
+            mean_ret_i = np.mean(future_returns) if future_returns else 0.0
             
             # Label as Weak if count < min_count
             is_weak = total_i < min_count
@@ -207,14 +205,13 @@ class BasePatternEngine:
             
             if p_count_i > n_count_i:
                 if not is_weak:
-                    p_winners.append((sub_pat, p_count_i, n_count_i))
+                    p_winners.append((sub_pat, p_count_i, n_count_i, mean_ret_i))
                 all_decisions.append(f"{sub_pat}:{p_count_i}/{n_count_i}(P{tag_suffix})")
             elif n_count_i > p_count_i:
                 if not is_weak:
-                    n_winners.append((sub_pat, n_count_i, p_count_i))
+                    n_winners.append((sub_pat, n_count_i, p_count_i, mean_ret_i))
                 all_decisions.append(f"{sub_pat}:{n_count_i}/{p_count_i}(N{tag_suffix})")
             else:
-                # Tie
                 all_decisions.append(f"{sub_pat}:{p_count_i}/{n_count_i}(T{tag_suffix})")
 
         if not p_winners and not n_winners:
@@ -227,21 +224,24 @@ class BasePatternEngine:
         # 4. Final Decision
         if total_up_win > total_down_win:
             forecast = 'UP'
-            # 5. Calculation Logic (Prob)
+            winning_count = total_up_win
             if not n_winners:
                 total_sum = sum(w[1] + w[2] for w in p_winners)
                 prob = (total_up_win / total_sum * 100) if total_sum > 0 else 0
             else:
-                prob = (total_up_win / (total_up_win + total_down_win) * 100)
-            winning_count = total_up_win
+                total_sum = total_up_win + total_down_win
+                prob = (total_up_win / total_sum * 100)
+            avg_return = np.mean([w[3] for w in p_winners]) if p_winners else 0.0
         elif total_down_win > total_up_win:
             forecast = 'DOWN'
+            winning_count = total_down_win
             if not p_winners:
                 total_sum = sum(w[1] + w[2] for w in n_winners)
                 prob = (total_down_win / total_sum * 100) if total_sum > 0 else 0
             else:
-                prob = (total_down_win / (total_up_win + total_down_win) * 100)
-            winning_count = total_down_win
+                total_sum = total_up_win + total_down_win
+                prob = (total_down_win / total_sum * 100)
+            avg_return = np.mean([w[3] for w in n_winners]) if n_winners else 0.0
         else:
             return None # Tie = Discard
 
@@ -249,10 +249,10 @@ class BasePatternEngine:
             'pattern': active_pattern,
             'forecast': forecast,
             'prob': round(prob, 1), 
-            'avg_return': 0.0, 
+            'avg_return': avg_return, 
             'total_p': total_up_win,
             'total_n': total_down_win,
-            'total_events': len(p_winners) + len(n_winners),
+            'total_events': total_sum,
             'winning_count': winning_count,
             'breakdown': "; ".join(all_decisions)
         }

@@ -28,11 +28,6 @@ class MeanReversionEngine(BasePatternEngine):
         is_thai = any(ex in exchange for ex in ['SET', 'MAI', 'TH'])
         is_china = any(ex in exchange for ex in ['HKEX', 'SHSE', 'SZSE', 'CHINA'])
         
-        # 1. INDICATORS
-        sma50 = close.rolling(50).mean()
-        vol_avg_20 = volume.rolling(20).mean()
-        vr = (volume.iloc[-1] / vol_avg_20.iloc[-1]) if vol_avg_20.iloc[-1] > 0 else 1.0
-        
         # 2. THRESHOLD LOGIC
         min_floor = 0.01 if is_thai else 0.005
         effective_std = self.calculate_dynamic_threshold(pct_change, min_floor)
@@ -47,30 +42,20 @@ class MeanReversionEngine(BasePatternEngine):
         active_pattern = self.get_active_pattern(pct_change, effective_std)
         if not active_pattern:
             return []
-
+ 
         # =====================================================
         # V4.4: AGGREGATE VOTING (Winner-Takes-All)
         # =====================================================
-        vote_result = self.aggregate_voting(df, pct_change, effective_std, active_pattern, min_count=30)
+        min_matches = settings.get('min_matches', 30)
+        vote_result = self.aggregate_voting(df, pct_change, effective_std, active_pattern, min_count=min_matches)
         
         if not vote_result:
             return []
-
-        # 3. MARKET-SPECIFIC FILTERS
-        filter_tags = []
-        if is_china:
-            if vr < 0.5: return []
-            if vr > 3.0: filter_tags.append("FOMO_REVERSION")
-            if vote_result['forecast'] == "UP" and close.iloc[-1] < sma50.iloc[-1]:
-                return []
-        
+ 
         # 4. QUALITY FLAG
         stats_mock = {'win_rate': vote_result['prob'], 'total': vote_result['total_events']}
-        if is_thai:
-            is_tradeable = self.check_trustworthy(stats_mock, 60.0, 30)
-        else:
-            is_tradeable = self.check_trustworthy(stats_mock, 60.0, 15)
-
+        is_tradeable = self.check_trustworthy(stats_mock, 60.0, min_matches)
+ 
         results = [{
             'engine': 'MEAN_REVERSION',
             'pattern': active_pattern,
@@ -79,13 +64,13 @@ class MeanReversionEngine(BasePatternEngine):
             'total_p': vote_result['total_p'],
             'total_n': vote_result['total_n'],
             'total_events': vote_result['total_events'],
+            'winning_count': vote_result['winning_count'],
+            'avg_return': vote_result['avg_return'],
             'breakdown': vote_result['breakdown'],
             'is_reversal': True,
             'is_tradeable': is_tradeable,
             'threshold': round(current_std * 100, 2),
-            'vr': round(vr, 2),
-            'filter_tags': filter_tags,
-            'vol_target_size': round(2.0 / (current_std * 100), 2) if is_china else None,
+            'change_pct': round(pct_change.iloc[-1] * 100, 2),
             'rr': 1.0
         }]
         

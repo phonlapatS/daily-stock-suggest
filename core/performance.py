@@ -31,11 +31,15 @@ COLUMNS = [
     'prob',           # Probability %
     'total_p',        # Total Positive Weight
     'total_n',        # Total Negative Weight
+    'avg_return',     # Weighted Average Return (Exp.Ret)
     'stats',          # จำนวนครั้ง (Total Weight)
+    'threshold',      # Volatility Threshold
+    'change_pct',     # Price move today (%)
     'breakdown',      # Suffix-level breakdown
     'price_at_scan',  # ราคา ณ เวลาสแกน
     'actual',         # UP / DOWN / PENDING
     'price_actual',   # ราคาวันถัดไป
+    'realized_change',# N+1 Realized Return (%)
     'correct',        # 1 / 0 / null
     'last_update'     # Timestamp อัปเดตล่าสุด
 ]
@@ -85,11 +89,15 @@ def log_forecast(results, group_info=None):
             'prob': round(prob, 1),
             'total_p': r.get('total_p', 0),
             'total_n': r.get('total_n', 0),
+            'avg_return': round(r.get('avg_return', 0.0), 4),
             'stats': r.get('total_events', 0),
+            'threshold': round(r.get('threshold', 0.0), 2),
+            'change_pct': round(r.get('change_pct', 0.0), 2),
             'breakdown': r.get('breakdown', ''),
             'price_at_scan': round(r.get('price', 0), 2),
             'actual': 'PENDING',
             'price_actual': None,
+            'realized_change': None,
             'correct': None,
             'last_update': now
         }
@@ -299,6 +307,8 @@ def verify_forecast(tv=None):
                 print(f"⚠️ Target date {target_date_str} not found in data, using latest price")
             
             # Determine actual direction
+            realized_change = ((price_actual - price_at_scan) / price_at_scan * 100) if price_at_scan > 0 else 0
+            
             if price_actual > price_at_scan:
                 actual = 'UP'
             elif price_actual < price_at_scan:
@@ -312,6 +322,7 @@ def verify_forecast(tv=None):
             # Update row
             df.loc[idx, 'actual'] = actual
             df.loc[idx, 'price_actual'] = round(price_actual, 2)
+            df.loc[idx, 'realized_change'] = round(realized_change, 2)
             df.loc[idx, 'correct'] = is_correct
             df.loc[idx, 'last_update'] = now
             

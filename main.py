@@ -330,8 +330,9 @@ def generate_report(results):
             # V4.4: Use consolidated accuracy score from voting
             prob = r.get('acc_score', 0)
             
-            # Simple threshold check: Must be clearly winning (>= 55%)
-            if prob < 55:
+            # Show all forecasts that meet basic probability threshold (>= 50%)
+            # to ensure consistency with view_report ALL
+            if prob < 50:
                 continue
                 
             r['_sort_prob'] = prob
@@ -356,24 +357,20 @@ def generate_report(results):
         # 3. Sorting (Prob DESC)
         filtered_data.sort(key=lambda x: -x.get('prob', 0))
         
-        # 4. Table Layout - User's Requested Concise Format
-        header = f"{'Symbol':<12} {'Predict':^12} {'Prob%':>10} {'Consensus (P/N)':>18}"
+        # 4. Table Layout - Concise Format
+        header = f"{'Symbol':<15} {'Predict':^15} {'Prob%':>10}"
         
-        print("-" * 55)
+        print("-" * 45)
         print(header)
-        print("-" * 55)
+        print("-" * 45)
 
         for r in filtered_data:
             forecast = r.get('forecast', r.get('forecast_label', ''))
             chance = "🟢 UP" if forecast == 'UP' else "🔴 DOWN"
             
             prob_val = r.get('prob', r.get('acc_score', 0.0))
-            p_w = int(r.get('total_p', 0))
-            n_w = int(r.get('total_n', 0))
-            consensus_str = f"{p_w} vs {n_w}"
-            
-            print(f"{r['symbol']:<13} {chance:^12} {prob_val:>9.1f}% {consensus_str:>16}")
-        print("-" * 57)
+            print(f"{r['symbol']:<15} {chance:^15} {prob_val:>9.0f}%")
+        print("-" * 45)
 
     # Export ALL results to CSV (both tradeable and not — for analysis/debug)
     df = pd.DataFrame(results)

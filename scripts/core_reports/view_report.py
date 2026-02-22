@@ -151,7 +151,7 @@ def view_report(symbol):
     
     # 6. Show the Math (Verification)
     if 'breakdown' in results[0] and results[0]['breakdown']:
-        print("\n🎯 FINAL DECISION MATH:")
+        print("\n--- FINAL DECISION MATH ---")
         parts = results[0]['breakdown'].split('; ')
         up_wins = []
         down_wins = []
@@ -175,29 +175,31 @@ def view_report(symbol):
         
         if results[0]['forecast_label'] == 'UP':
             vote_weight = sum_up
+            final_dir = "🟢 UP"
             if not down_wins:
-                # Single side: Base = All events in winning patterns
                 denominator = sum(w[0] + w[1] for w in up_wins)
-                calc_str = f"{vote_weight} / {denominator} (Total Samples)"
+                calc_str = f"{vote_weight} / {denominator}"
             else:
                 # Multi side: Base = Sum of winning weights from both sides
                 denominator = sum_up + sum_down
                 calc_str = f"{sum_up} / ({sum_up} + {sum_down})"
         else:
             vote_weight = sum_down
+            final_dir = "🔴 DOWN"
             if not up_wins:
                 denominator = sum(w[0] + w[1] for w in down_wins)
-                calc_str = f"{vote_weight} / {denominator} (Total Samples)"
+                calc_str = f"{vote_weight} / {denominator}"
             else:
                 denominator = sum_up + sum_down
                 calc_str = f"{sum_down} / ({sum_up} + {sum_down})"
         
-        print(f"   Vote Weight (UP)    : {sum_up}")
-        print(f"   Vote Weight (DOWN)  : {sum_down}")
-        print(f"   Denominator (Base)  : {denominator}")
+        print(f"🎯 Final Result: {final_dir}")
+        print(f"   UP                  : {sum_up}")
+        print(f"   DOWN                : {sum_down}")
+        print(f"   Total               : {denominator}")
         print(f"   Calculation         : {calc_str} = {results[0]['acc_score']:.1f}% Prob%")
         print("-" * 50)
-        print("💡 Note: Losing side occurrences are included in Denominator base")
+        print("💡 Note: Losing side occurrences are included in Total")
         print("   to ensure realistic probability (Weight != Occurrences)")
 
 def view_all_report():
@@ -211,34 +213,30 @@ def view_all_report():
         print("❌ No patterns found in the latest run.")
         return
 
-    # Sort by Probability (acc_score)
+    # Sort by Probability (acc_score) & Filter by config threshold
+    df = df[df['acc_score'] >= config.MIN_PROB_THRESHOLD]
     df = df.sort_values(by=['acc_score', 'total_events'], ascending=[False, False])
 
     print_header("DAILY V4.4 CONSENSUS REPORT (ALL SYMBOLS)")
-    print(f"{'Symbol':<10} {'Chg%':>8} {'Thresh%':>10} {'Forecast':^10} {'Exp.Ret':>8} {'Score':>7} {'Weight(P/N)'}")
-    print("-" * 85)
+    header = f"{'Symbol':<15} {'Forecast':^15} {'Prob%':>10}"
+    print(header)
+    print("-" * 45)
 
     for _, row in df.iterrows():
         # Prepare Data
         sym = row['symbol']
-        price = row['price']
-        chg = f"{row['change_pct']:>7.2f}%"
-        thresh = f"±{row['threshold']:.2f}%"
         
         # Construct symbolic forecast (🟢 / 🔴)
         forecast_label = row['forecast_label']
         direction_sym = "🟢 UP" if forecast_label == "UP" else "🔴 DOWN"
         
-        exp_ret = f"{row.get('avg_return', 0.0):+.2f}%"
-        prob = row['acc_score']
+        # Prob (rounded to integer)
+        prob_val = row['acc_score']
+        prob_str = f"{prob_val:.0f}%"
         
-        total_p = int(row.get('total_p', 0))
-        total_n = int(row.get('total_n', 0))
-        stats = f"{total_p}/{total_n}"
-
-        print(f"{sym:<11} {chg:>8} {thresh:>10} {direction_sym:>10} {exp_ret:>8} {prob:>7.1f} {stats:>20}")
+        print(f"{sym:<15} {direction_sym:^15} {prob_str:>10}")
     
-    print("-" * 85)
+    print("-" * 45)
     print(f"Total: {len(df)} symbols")
 
     # ==========================================
@@ -258,105 +256,75 @@ def view_all_report():
         if pd.isna(breakdown_str) or not breakdown_str:
             continue
             
+        print(f"\n[ {idx+1}. {sym} ]")
+        print("-" * 80)
+        print(f"{'Suffix Pattern':<18} | {'UP (+)':>10} | {'DOWN (-)':>10} | {'Winner':^12}")
+        print("-" * 80)
+        
         parts = breakdown_str.split('; ')
-        pattern_data = []
+        p_winners = [] # List of (win, other)
+        n_winners = []
         
         for part in parts:
             try:
                 pattern_part = part.split(':')[0]
-                display_pat = pattern_part.replace('+', 'P').replace('-', 'N')
+                numbers_part = part.split(':')[1] 
+                counts_str = numbers_part.split('(')[0] 
+                tag = numbers_part.split('(')[1].replace(')', '') 
                 
-                numbers_part = part.split(':')[1]
-                stats = numbers_part.split('(')[0]
-                winner_tag = numbers_part.split('(')[1].replace(')', '')
+                v1, v2 = map(int, counts_str.split('/'))
                 
-                p_wins, n_wins = map(int, stats.split('/'))
-                pattern_data.append({
-                    'pat': display_pat,
-                    'p': p_wins,
-                    'n': n_wins,
-                    'winner': winner_tag
-                })
+                is_weak = "W" in tag
+                w_label = " (Weak)" if is_weak else ""
+                
+                if tag.startswith('P'):
+                    up_c, down_c = v1, v2
+                    winner_label = f"🟢 UP{w_label}"
+                    if not is_weak: p_winners.append((v1, v2))
+                elif tag.startswith('N'):
+                    up_c, down_c = v2, v1
+                    winner_label = f"🔴 DOWN{w_label}"
+                    if not is_weak: n_winners.append((v1, v2))
+                else:
+                    up_c, down_c = v1, v2
+                    winner_label = f"⚪ TIE{w_label}"
+                
+                print(f"{pattern_part:<18} | {up_c:>10} | {down_c:>10} | {winner_label:^12}")
             except Exception:
-                continue
-                
-        if not pattern_data:
-            continue
-            
-        print(f"\n[ {idx+1}. {sym} ]")
+                print(f"  {part}")
         
-        # Build Headers
-        header_row = f"{'Pattern Suffix':<16} : "
-        for pdct in pattern_data:
-            header_row += f"{pdct['pat']:<13}"
-        header_row += "| SUMMARY"
+        print("-" * 80)
         
-        print(header_row)
-        print("-" * len(header_row))
+        # FINAL DECISION MATH (Per Symbol) - EXACT ALIGNMENT WITH IMAGE
+        sum_up_wins = sum(w[0] for w in p_winners)
+        sum_down_wins = sum(w[0] for w in n_winners)
         
-        num_patterns = len(pattern_data)
-        
-        # Build UP row
-        line_p = f"{'🟢 UP Votes':<16} : "
-        sum_p_actual = 0
-        for pdct in pattern_data:
-            if num_patterns == 1 or pdct['winner'] == 'P':
-                sum_p_actual += pdct['p']
-                val_str = f"*{pdct['p']}*" if pdct['winner'] == 'P' else f"{pdct['p']}"
+        forecast = row['forecast_label']
+        if forecast == 'UP':
+            vote_weight = sum_up_wins
+            if not n_winners:
+                denominator = sum(w[0] + w[1] for w in p_winners)
+                calc_str = f"{vote_weight} / {denominator}"
             else:
-                val_str = f"{pdct['p']} (0)"
-            line_p += f"{val_str:<13}"
-        line_p += f"| = {sum_p_actual}"
-        
-        # Build DOWN row
-        line_n = f"{'🔴 DOWN Votes':<16} : "
-        sum_n_actual = 0
-        for pdct in pattern_data:
-            if num_patterns == 1 or pdct['winner'] == 'N':
-                sum_n_actual += pdct['n']
-                val_str = f"*{pdct['n']}*" if pdct['winner'] == 'N' else f"{pdct['n']}"
-            else:
-                val_str = f"{pdct['n']} (0)"
-            line_n += f"{val_str:<13}"
-        line_n += f"| = {sum_n_actual}"
-        
-        print(line_p)
-        print(line_n)
-        print("-" * len(header_row))
-        
-        # Final calculation (Supervisor True Winner Counting vs Single-Pattern Fallback)
-        if num_patterns == 1:
-            p_val = pattern_data[0]['p']
-            n_val = pattern_data[0]['n']
-            total = p_val + n_val
-            
-            if p_val >= n_val:
-                final_dir = "🟢 UP"
-                winner_wr = (p_val / total * 100) if total > 0 else 0
-            else:
-                final_dir = "🔴 DOWN"
-                winner_wr = (n_val / total * 100) if total > 0 else 0
-                
-            formula_str = f"({winner_wr:.1f}%)"
-            print(f"🎯 Final Result: {final_dir} | Calculation: {formula_str} / 1 = {winner_wr:.1f}% Prob%")
+                denominator = sum_up_wins + sum_down_wins
+                calc_str = f"{sum_up_wins} / {denominator}"
+            final_dir = "🟢 UP"
         else:
-            # Multi-pattern weighted consensus (TOTAL_UP_WIN vs TOTAL_DOWN_WIN)
-            sum_p_win = sum(pdct['p'] for pdct in pattern_data if pdct['winner'] == 'P')
-            sum_n_win = sum(pdct['n'] for pdct in pattern_data if pdct['winner'] == 'N')
-            
-            if sum_p_win > sum_n_win:
-                final_dir = "🟢 UP"
-                final_prob = (sum_p_win / (sum_p_win + sum_n_win) * 100) if (sum_p_win + sum_n_win) > 0 else 0
-                calc_str = f"{sum_p_win} / ({sum_p_win} + {sum_n_win})"
-            elif sum_n_win > sum_p_win:
-                final_dir = "🔴 DOWN"
-                final_prob = (sum_n_win / (sum_p_win + sum_n_win) * 100) if (sum_p_win + sum_n_win) > 0 else 0
-                calc_str = f"{sum_n_win} / ({sum_p_win} + {sum_n_win})"
+            vote_weight = sum_down_wins
+            if not p_winners:
+                denominator = sum(w[0] + w[1] for w in n_winners)
+                calc_str = f"{vote_weight} / {denominator}"
             else:
-                print("🎯 Final Result: ⚪ NEUTRAL (Tie)")
-                return
-                
-            print(f"🎯 Final Result: {final_dir} | Calculation: {calc_str} = {final_prob:.1f}% Prob%")
+                denominator = sum_up_wins + sum_down_wins
+                calc_str = f"{sum_down_wins} / {denominator}"
+            final_dir = "🔴 DOWN"
+            
+        print(f"🎯 Final Result: {final_dir}")
+        print(f"UP                  : {sum_up_wins}")
+        print(f"DOWN                : {sum_down_wins}")
+        print(f"Total               : {denominator}")
+        print(f"Calculation         : {calc_str} = {row['acc_score']:.1f}% Prob%")
+        print("-" * 80)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1].upper() == 'ALL':

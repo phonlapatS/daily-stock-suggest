@@ -27,9 +27,8 @@ VOLATILITY_WINDOW = 20    # Rolling window for Volatility analysis
 MIN_PROB_THRESHOLD = 50.0  # Default: 50% (ตามเอกสาร Forecast/Monitor)
 
 # Minimum matches threshold (sample size)
-# - Matches >= 30: ใช้สำหรับหุ้นไทย (สถิติเพียงพอ)
-# - Matches >= 15: ใช้สำหรับหุ้นต่างประเทศ (ยืดหยุ่นกว่า)
-MIN_MATCHES_THRESHOLD = 30  # Default: 30 (ตามเอกสาร)
+# - Standard: 30 matches across all markets for high statistical quality
+MIN_MATCHES_THRESHOLD = 30 
 
 # Tier classification (optional - for display only)
 # - Tier A: Prob >= 60% (high confidence)
@@ -102,9 +101,8 @@ ASSET_GROUPS = {
         "history_bars": 5000,
         "assets": [{'symbol': s, 'exchange': 'NASDAQ'} for s in NASDAQ_STOCKS],
         "fixed_threshold": None, # Use Dynamic Base
-        "engine": "TREND_MOMENTUM",
-        "min_threshold": 0.005,  # Optimized to 0.5%
-        "min_adx": 20            # Standard Trend Strength
+        "engine": "MEAN_REVERSION",
+        "min_threshold": 0.005  # Optimized to 0.5%
     },
     # ==========================================
     # METALS - Split by Asset for Optimized Thresholds
@@ -170,17 +168,11 @@ ASSET_GROUPS = {
             {'symbol': '2015', 'exchange': 'HKEX', 'name': 'LI-AUTO'},
             {'symbol': '9868', 'exchange': 'HKEX', 'name': 'XPENG'},
             {'symbol': '9866', 'exchange': 'HKEX', 'name': 'NIO'},
-            # Expansion (V4.5)
-            {'symbol': '0981', 'exchange': 'HKEX', 'name': 'SMIC'},
+            # Expansion (V4.5) - Supported by Master Stats
             {'symbol': '1024', 'exchange': 'HKEX', 'name': 'KUAISHOU'},
             {'symbol': '9999', 'exchange': 'HKEX', 'name': 'NETEASE'},
-            {'symbol': '0992', 'exchange': 'HKEX', 'name': 'LENOVO'},
             {'symbol': '2382', 'exchange': 'HKEX', 'name': 'SUNNY-OPT'},
-            {'symbol': '6618', 'exchange': 'HKEX', 'name': 'JD-HEALTH'},
-            {'symbol': '0241', 'exchange': 'HKEX', 'name': 'ALI-HEALTH'},
-            {'symbol': '0762', 'exchange': 'HKEX', 'name': 'CHINA-UNICOM'},
-            {'symbol': '0941', 'exchange': 'HKEX', 'name': 'CHINA-MOBILE'},
-            {'symbol': '0883', 'exchange': 'HKEX', 'name': 'CNOOC'}
+            {'symbol': '6618', 'exchange': 'HKEX', 'name': 'JD-HEALTH'}
         ],
         "fixed_threshold": None, 
         "engine": "MEAN_REVERSION", # V4.4: Switched from TREND to REVERSION (data-driven)
@@ -203,8 +195,7 @@ ASSET_GROUPS = {
             {'symbol': '2395', 'exchange': 'TWSE', 'name': 'ADVANTECH'}
         ],
         "fixed_threshold": None,
-        "engine": "TREND_MOMENTUM",
-        "min_threshold": 0.005, # Optimized to 0.5% (was 1.0%)
-        "min_adx": 20           # Standard ADX
+        "engine": "MEAN_REVERSION",
+        "min_threshold": 0.005 # Optimized to 0.5% (was 1.0%)
     }
 }

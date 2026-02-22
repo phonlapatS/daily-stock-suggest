@@ -76,6 +76,8 @@ class TrendMomentumEngine(BasePatternEngine):
             'total_p': vote_result['total_p'],
             'total_n': vote_result['total_n'],
             'total_events': vote_result['total_events'],
+            'winning_count': vote_result['winning_count'],
+            'avg_return': vote_result['avg_return'],
             'breakdown': vote_result['breakdown'],
             'is_trend_follow': True,
             'is_tradeable': is_tradeable,

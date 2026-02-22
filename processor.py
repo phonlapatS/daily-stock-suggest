@@ -53,6 +53,9 @@ def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_t
                     # V4.2: Explicitly pass the market floor (min_threshold)
                     settings['min_threshold'] = group_config.get('min_threshold')
                     
+                    # V6.2: Enforce strict minimum of 30 matches for all markets
+                    settings['min_matches'] = config.MIN_MATCHES_THRESHOLD
+
                     # Inherit exchange from config if not explicitly passed
                     if not exchange:
                         for a in group_config['assets']:
@@ -60,6 +63,10 @@ def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_t
                                 settings['exchange'] = a.get('exchange', '')
                                 break
                     break
+        
+        # Fallback if no group found
+        if 'min_matches' not in settings:
+            settings['min_matches'] = config.MIN_MATCHES_THRESHOLD
         
         selected_engine_type = selected_engine_type or 'MEAN_REVERSION'
         engine = engines.get(selected_engine_type, engines['MEAN_REVERSION'])
@@ -88,7 +95,10 @@ def analyze_asset(df, symbol=None, exchange=None, fixed_threshold=None, engine_t
                 'confidence': (prob_val - 50) * 2,
                 'total_p': res.get('total_p', 0),
                 'total_n': res.get('total_n', 0),
+                'avg_return': res.get('avg_return', 0.0) * 100,
                 'total_events': res.get('total_events', 0),
+                'winning_count': res.get('winning_count', 0),
+                'stats': res.get('winning_count', 0), # Map to stats for dashboard
                 'breakdown': res.get('breakdown', ''),
                 'threshold': res.get('threshold', 0),
                 'total_bars': len(df)

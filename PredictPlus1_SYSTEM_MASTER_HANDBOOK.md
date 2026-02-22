@@ -120,8 +120,10 @@ V4.4.7 ยกระดับจากการทำนายทิศทาง 
 
 ### 🌅 กิจวัตรประจำวัน (Daily Routine)
 1.  `python main.py`: สแกนหุ้นและสร้างคำทำนาย (รันหลังตลาดปิด)
-2.  `python scripts/core_reports/view_report.py ALL`: ดูรายงาน Consensus (±Threshold, Prob%, Exp.Ret)
-3.  `python scripts/core_reports/check_forward_testing.py --verify`: ตรวจคะแนนย้อนหลัง (Verify)
+2.  `python scripts/view_report.py ALL`: ดูรายงาน Consensus แบบละเอียด (Prob%, Consensus P/N)
+3.  `python scripts/daily_forecast_dashboard.py`: ดูภาพรวม Accuracy/Winrate และสัญญาณที่ดีที่สุดรายวัน
+4.  `python scripts/check_forward_testing.py --verify`: ตรวจคะแนนย้อนหลัง (Verify) เพื่ออัปเดตผลจริง
+5.  `python scripts/calculate_performance.py`: วิเคราะห์ประสิทธิภาพสะสม (P/L, Winrate) รายตลาด
 
 ### 🔧 การบำรุงรักษา (Maintenance)
 *   `python scripts/backfill/generate_master_stats.py`: รันเพื่อสร้างฐานข้อมูล Pattern ใหม่ (นาน 20-30 นาที)
