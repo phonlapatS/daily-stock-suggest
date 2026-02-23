@@ -8,7 +8,8 @@
 
 | Version | Codename | Date | Key Features | Status |
 |---------|----------|------|--------------|--------|
-| **V4.4** | **Aggregate Voting**| **2026-02** | **Consensus Voting, Dynamic Streak, 30-sample Gatekeeper** | **✅ CURRENT** |
+| **V5.0** | **Sync & Reliability**| **2026-02** | **Fixed Prob Overflow, Realized P/L Sync, Dashboard Standard** | **✅ CURRENT** |
+| V4.4 | Aggregate Voting| 2026-02 | Consensus Voting, Dynamic Streak, 30-sample Gatekeeper | ✅ Stable |
 | V4.1 | Production-Ready | 2026-02 | Production Mode, Enhanced RM, Transparent Display | ✅ Stable |
 | V2.0 | Enhanced | 2026-01 | Multi-timeframe Support | ❌ Deprecated |
 | V3.0 | Statistical | 2026-01 | Statistical Filtering | ❌ Deprecated |
@@ -30,21 +31,26 @@
 | V12.4 | Real-World Ready | 2026-02 | Option A: RRR 1.25, Count 150 - Best for real trading | ✅ Stable |
 | V13.0 | China Market Focus | 2026-02 | Lower RRR (1.0) and Prob (53%) - Increase tradable stocks | ✅ Stable |
 | V13.1 | China Market - Increase Stocks | 2026-02 | Lower RRR (0.95) and Count (10), Optimize RM (TP 4.5%) | ✅ Stable |
-### V4.4 - Aggregate Voting (2026-02-22) ⭐ CURRENT
-**แนวคิด:** Consensus Voting + Dynamic Streak Extraction
+### V5.0 - Sync & Reliability (2026-02-23) ⭐ CURRENT
+**แนวคิด:** Data Reconstruction & Reporting Synchronization
 
 **สิ่งที่ทำ:**
-- **Aggregate Voting (Winner-Takes-All):** เปลี่ยนการเลือก Pattern จาก "Best Fit" (เลือกอันเดียว) เป็น "Consensus" (รวมคะแนนโหวตจากทุกส่วนปลายของ Pattern)
-- **Dynamic Streak Extraction:** ยกเลิกการเลือกจำนวนวันแบบตายตัว (Fixed Lookback) โดยระบบจะสแกนย้อนหลังจนกว่าจะเจอวัน "Neutral" (นิ่ง) เพื่อหาขอบเขตของรอบราคาที่แท้จริง
-- **Statistical Gatekeeper:** บังคับขั้นต่ำ 30 ครั้ง (Sample Size) ต่อหน่วยการโหวต เพื่อความน่าเชื่อถือทางสถิติ
-- **Detailed Suffix Breakdown:** บันทึกรายละเอียดการโหวตแยกตามระดับลงใน Logs
+- **Fixed Probability Overflow:** แก้ไขบัคสูตรคำนวณความแม่นยำใน Engine ที่ทำให้ค่าเกิน 100% (Cap at 100%)
+- **Realized P/L Synchronization:** ปรับ Script ทุกตัวให้ใช้ `realized_change` (Scan Price -> Target Price) เป็นมาตรฐานเดียวในการวัดผล P/L
+- **Standardized Filters:** บังคับใช้เกณฑ์ `Stats >= 30` และ `Prob >= 50%` ทั้งใน Dashboard และ Performance Script เพื่อตัด noise ออกจากรายงาน
+- **Full Data Reconstruction:** ทำการ Backfill ข้อมูลใหม่ทั้งหมดตั้งแต่วันที่ 2 ก.พ. เพื่อให้ได้สถิติที่ถูกต้องแม่นยำที่สุด
 
 **ข้อดี:**
-- ✅ **เสถียรขึ้น (Statistical Robustness):** ลดสัญญาณหลอกจากการที่ pattern ยาวๆ เพียงอันเดียวมีข้อมูลน้อย
-- ✅ **Logic แม่นยำขึ้น:** จับรอบหุ้นตามความแรงจริง (Momentum) ไม่จำกัดแค่วันที่ระบุ
-- ✅ **โปร่งใส:** ตรวจสอบย้อนหลังได้ว่า Suffix ไหนเป็นตัวขับเคลื่อนสัญญาณ
+- ✅ **ความน่าเชื่อถือสูงสุด:** ตัวเลขทุกที่ในระบบตอนนี้ตรงกันและสะท้อนความจริง 100%
+- ✅ **โปร่งใส:** แยกความผิดพลาดของโค้ดออกจากประสิทธิภาพของกลยุทธ์ชัดเจน
+- ✅ **พร้อมเทรด:** รายงานผล Winrate และ RRR ที่แท้จริง (Real-world Statistics)
 
-**ทำไมถึงเป็น Current:** เป็นการรวบรวมจุดแข็งของ Logic เดิมนำมาหาจุดร่วม (Consensus) ทำให้การตัดสินใจมีความเสถียรและทนทานต่อ noise ในตลาดมากขึ้น
+**ทำไมถึงเป็น Current:** เป็นเวอร์ชันที่ "Clean" ที่สุดในเชิงข้อมูล โดยแก้ปัญหาด้านความคลาดเคลื่อนทางเทคนิคทั้งหมดเพื่อให้พร้อมสำหรับการปรับจูนกลยุทธ์ในอนาคต
+
+---
+
+### V4.4 - Aggregate Voting (2026-02-22)
+**แนวคิด:** Consensus Voting + Dynamic Streak Extraction
 
 ---
 
@@ -685,7 +691,7 @@
 
 ---
 
-**Last Updated:** 2026-02-22  
-**Current Version:** V4.4 (Aggregate Voting & Dynamic Streak)  
-**Status:** ✅ **PRODUCTION-READY** - Consensus-based Statistics  
+**Last Updated:** 2026-02-23  
+**Current Version:** V5.0 (Sync & Reliability)  
+**Status:** ✅ **PRODUCTION-READY** - Audited Statistics  
 **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)

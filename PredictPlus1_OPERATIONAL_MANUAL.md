@@ -1,4 +1,4 @@
-# PredictPlus1 V4.5 — คู่มือการใช้งานคำสั่ง (Operational Commands Manual) 📘
+# PredictPlus1 V5.0 — คู่มือการใช้งานคำสั่ง (Operational Commands Manual) 📘
 
 คู่มือนี้รวบรวมคำสั่งพื้นฐานและการใช้งานระบบระดับสูง ทั้งการสแกนรายวัน, การดูรายงาน, และการวัดผลความแม่นยำ
 
@@ -30,8 +30,11 @@ python run_daily_routine.py
         *   ใช้เฉพาะ Pattern ที่มีข้อมูล 30 ครั้งขึ้นไปเท่านั้น (Global Standard)
 
 ### 🏆 แดชบอร์ดภาพรวมผลงาน (Executive Dashboard)
-*   **ดู Dashboard สรุป:** `python scripts/daily_forecast_dashboard.py`
-    *   แสดงทั้งคำทำนายของวันพรุ่งนี้ และสรุปความแม่นยำ (Winrate/RRR) ย้อนหลังทุกลำดับ
+*   **ดู Dashboard สรุปทุกตลาด:** `python scripts/core_reports/daily_forecast_dashboard.py`
+*   **ดู Dashboard แยกรายตลาด (V5.0 New):**
+    *   `python scripts/core_reports/daily_forecast_dashboard.py --market SET` (หุ้นไทย)
+    *   `python scripts/core_reports/daily_forecast_dashboard.py --market NASDAQ` (หุ้นอเมริกา)
+    *   แสดงทั้งคำทำนายของวันพรุ่งนี้ และสรุปความแม่นยำ (Winrate/RRR) ย้อนหลังทุกลำดับ โดยใช้เกณฑ์กรองมาตรฐาน (`Stats >= 30`, `Prob >= 50%`)
 
 ### 🎯 การคำนวณประสิทธิภาพ (Performance Analysis)
 *   **สรุป Win-Rate รายตลาด:** `python scripts/analysis/calculate_performance.py`

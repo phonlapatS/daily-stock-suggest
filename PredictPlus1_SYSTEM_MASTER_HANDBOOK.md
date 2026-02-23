@@ -1,7 +1,7 @@
-# PredictPlus1 System Documentation (V4.5)
+# PredictPlus1 System Documentation (V5.0)
 ## Unified Fractal Prediction Architecture
 
-**Project Status (2026-02-23):** ระบบเข้าสู่ความเสถียรในระดับ **V4.5 Final Logic** มีการปรับปรุงการคำนวณความน่าจะเป็นแบบ **Consensus (Average of Probabilities)** และการแสดงผลรายงานแบบมืออาชีพควบคู่กับค่าสถิติย้อนหลัง (Stats) เพื่อความโปร่งใสสูงสุด
+**Project Status (2026-02-23):** ระบบเข้าสู่ความเสถียรในระดับ **V5.0 Audited Logic** มีการแก้ไขความคลาดเคลื่อนทางสถิติ (Probability Overflow) และปรับการรายงานผล P/L ให้เป็นมาตรฐานเดียวกัน (`realized_change`) ทุกลำดับ พร้อมผลการตรวจสอบความแม่นยำย้อนหลังแบบ 100% สอดคล้องกับ Dashboard ครับ
 
 ---
 
@@ -35,10 +35,10 @@ Every symbol has its own "Normal Range" of movement.
 #### Step 3: Fractal Pattern Consensus (Aggregate Voting)
 When a move is detected, the system breaks the recent price action into "Suffix Patterns" (e.g., if the pattern is `+ - +`, it checks `+`, `- +`, and `+ - +`).
 *   **Global Standard**: Every pattern must have occurred at least **30 times** in the last 20 years to be statistically significant.
-*   **Consensus Probability (Prob%)**: ตั้งแต่ V4.5 ระบบใช้การหา **ค่าเฉลี่ยของความแม่นยำ (Average of Probabilities)** จากทุก Suffix Patterns ที่โหวตชนะ
-    *   สูตร: `SUM(Win_Rate_i) / Number_of_Patterns`
+*   **Consensus Probability (Prob%)**: ตั้งแต่ V5.0 ระบบใช้การหา **ค่าเฉลี่ยของความแม่นยำ (Average of Probabilities)** จากทุก Suffix Patterns ที่โหวตชนะ และมีการ **Cap ค่าไม่ให้เกิน 100%** เพื่อความถูกต้องทางคณิตศาสตร์
+    *   สูตร: `MIN(SUM(Win_Rate_i) / Number_of_Patterns, 100.0)`
     *   หน้าจอรายงานจะแสดงผลในรูปแบบ `Prob (Stats)` เช่น `76.0% (290)` โดย 290 คือจำนวนครั้งทั้งหมด (Historical Samples) ที่พบข้อมูล
-    *   **Strict Logic**: ระบบใช้ค่าดิบทางคณิตศาสตร์ (Raw Math) โดยไม่มีการปรุงแต่งค่า (No Artificial Caps) เพื่อให้สะท้อนความจริงของข้อมูลมากที่สุด
+    *   **Reporting Synchronicity**: ระบบบังคับใช้เกณฑ์กรองเดียวกันทั่วทั้งระบบ (`Stats >= 30` และ `Prob >= 50%`) เพื่อให้ตัวเลขใน Dashboard และสรุปผลประกอบการตรงกัน 100%
 
 #### Step 4: Verification (Forward Testing)
 The system does not just predict; it "marks its own homework."
@@ -51,12 +51,15 @@ The system does not just predict; it "marks its own homework."
 ### 3. Unified Market Configurations
 As of V4.4, all markets are unified under the `MeanReversionEngine` logic for N+1 prediction:
 
-| Market | Engine | Min Matches | Min Prob | ADX/SMA Filters |
+| Market | Engine | Min Matches | Min Prob | Filtering Criteria |
 | :--- | :--- | :--- | :--- | :--- |
-| **Thai (SET)** | MEAN_REVERSION | 30 | 50% | None (Predict Only) |
-| **US (NASDAQ)** | MEAN_REVERSION | 30 | 50% | None (Predict Only) |
-| **Taiwan (TWSE)** | MEAN_REVERSION | 30 | 50% | None (Predict Only) |
-| **China (HKEX)** | MEAN_REVERSION | 30 | 50% | None (Predict Only) |
+| **Thai (SET)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
+| **US (NASDAQ)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
+| **Taiwan (TWSE)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
+| **China (HKEX)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
+
+> [!NOTE]
+> **Dashboard Filter**: ตลาดที่มีข้อมูลน้อยกว่า 30 ครั้ง (Sample Size) หรือความน่าจะเป็นต่ำกว่า 50% จะไม่ถูกแสดงใน Dashboard เพื่อลดสัญญาณหลอก (Noise) และรักษาระดับคุณภาพของสัญญาณ (Signal Quality)
 
 ---
 
@@ -77,5 +80,5 @@ As of V4.4, all markets are unified under the `MeanReversionEngine` logic for N+
 *   **Duplicate Cleanup**: `python scripts/maintenance/cleanup_duplicate_forecasts.py` - Ensures the log is clean for calculation.
 
 ---
-**Version 4.5 - Final Consensus Logic Complete**
+**Version 5.0 - Audited Statistics & Sync Complete**
 *Date: February 23, 2026*

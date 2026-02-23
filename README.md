@@ -1,14 +1,13 @@
-# Stock Prediction System (v4.5)
+# PredictPlus1: Fractal N+1 Prediction System (V5.0)
+> **Advanced Statistical Pattern Matching for Global Equity Markets**
 
-📊 **Fractal N+1 Prediction System - Production-Ready Risk Management System**
-
-> **🆕 Version 4.5 Updates (2026-02-23):** "Consensus Probability & Advanced Reporting"
-> - ✅ **Consensus Probability (V4.5):** Uses **Average of Probabilities** across all winning suffixes for superior statistical accuracy.
-> - ✅ **Advanced Reporting:** New `Prob (Stats)` format (e.g. `76.0% (290)`) showing total historical sample size in reports.
-> - ✅ **Strict Logic:** Removed artificial probability caps; system reflects raw mathematical win rates for absolute transparency.
-> - ✅ **Win/Loss Stats:** Intuitive display with Wins (+) and Losses (-) for immediate profit/drawdown visual context.
-> - ✅ **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)
-> - ✅ **Branch:** [version-4.5](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.5) (Recommended)
+## 🎯 Current Status: V5.0 Audited Reliability (Feb 2026)
+- **High-Fidelity Reporting**: Synchronized P/L reporting across all scripts using `realized_change`.
+- **Audited Statistics**: Fixed probability calculations and cleared legacy data reconstruction from Feb 2nd.
+- **Statistical Gatekeeper**: All dashboards strictly filter for `Stats >= 30` and `Prob >= 50%` to ensure quality over quantity.
+- **Market Coverage**: SET (Thai), NASDAQ (US), TWSE (Taiwan), HKEX (China/HK), OANDA (Gold/Silver).
+- ✅ **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)
+- ✅ **Branch:** [version-5.0](https://github.com/phonlapatS/daily-stock-suggest/tree/version-5.0) (Recommended)
 
 ## 🌎 Supported Assets (Total: 255+)
 
