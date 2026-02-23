@@ -396,28 +396,31 @@ def main():
                     # 4. ตัดสินฝั่งชนะของวันนี้
                     if total_up_win > total_down_win:
                         winning_side = 'P'
+                        winning_patterns = p_winners
                         forecast = 'UP'
-                        if not n_winners:
-                            # Single side: Prob of winning patterns
-                            total_sum = sum(d['total'] for d in p_winners)
-                            prob = (total_up_win / total_sum * 100) if total_sum > 0 else 0
-                        else:
-                            # Multi side: TOTAL_UP_WIN / (TOTAL_UP_WIN + TOTAL_DOWN_WIN)
-                            prob = (total_up_win / (total_up_win + total_down_win) * 100)
                     elif total_down_win > total_up_win:
                         winning_side = 'N'
+                        winning_patterns = n_winners
                         forecast = 'DOWN'
-                        if not p_winners:
-                            total_sum = sum(d['total'] for d in n_winners)
-                            prob = (total_down_win / total_sum * 100) if total_sum > 0 else 0
-                        else:
-                            prob = (total_down_win / (total_up_win + total_down_win) * 100)
                     else:
-                        continue # เสมอ -> ข้าม
+                        continue # Tie = Skip
+                    
+                    # Probability Calculation: Average of Individual Probabilities (Consensus)
+                    pattern_probs = []
+                    for d in winning_patterns:
+                        # d contains: 'count' (win count), 'total' (total bars), 'pattern'
+                        # To find the true probability of this pattern we need its original up/down splits.
+                        info_d = pattern_stats_map[d['pattern']]
+                        total_events_i = info_d.get('next_up', 0) + info_d.get('next_down', 0)
+                        p_i = (d['count'] / total_events_i * 100) if total_events_i > 0 else 0
+                        pattern_probs.append(p_i)
+                    
+                    avg_prob = np.mean(pattern_probs) if pattern_probs else 0.0
+                    final_prob = avg_prob
 
                     # บันทึกค่า
-                    prob = round(prob, 1)
-                    best_fit_pattern = (p_winners + n_winners)[0]['pattern']
+                    prob = round(final_prob, 1)
+                    best_fit_pattern = suffixes[0]
                     count = int(max(total_up_win, total_down_win))
 
                     # 5. หา target_date (N+1)

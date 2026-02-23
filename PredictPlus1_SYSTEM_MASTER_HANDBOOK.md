@@ -1,7 +1,7 @@
 # PredictPlus1 System Documentation (V4.5)
 ## Unified Fractal Prediction Architecture
 
-**Project Status (2026-02-23):** หัวหน้าเริ่มโอเคกับ Logic การตรวจสอบ (Proof Check) และความแม่นยำทางสถิติของเวอร์ชันนี้แล้ว โดยเฉพาะความโปร่งใสของ Pattern Breakdown และการตัด 100% Prob ทิ้ง อย่างไรก็ตาม ยังคงมีจุดที่ต้องปรับปรุงเล็กน้อย (Minor Tweak) ในลำดับถัดไป
+**Project Status (2026-02-23):** ระบบเข้าสู่ความเสถียรในระดับ **V4.5 Final Logic** มีการปรับปรุงการคำนวณความน่าจะเป็นแบบ **Consensus (Average of Probabilities)** และการแสดงผลรายงานแบบมืออาชีพควบคู่กับค่าสถิติย้อนหลัง (Stats) เพื่อความโปร่งใสสูงสุด
 
 ---
 
@@ -35,10 +35,10 @@ Every symbol has its own "Normal Range" of movement.
 #### Step 3: Fractal Pattern Consensus (Aggregate Voting)
 When a move is detected, the system breaks the recent price action into "Suffix Patterns" (e.g., if the pattern is `+ - +`, it checks `+`, `- +`, and `+ - +`).
 *   **Global Standard**: Every pattern must have occurred at least **30 times** in the last 20 years to be statistically significant.
-*   **Consensus**: The system sums the "Winners" from each significant suffix pattern.
-    *   If `UP Wins > DOWN Wins`: Forecast = 🟢 UP.
-    *   If `DOWN Wins > UP Wins`: Forecast = 🔴 DOWN.
-*   **Probability (Prob%)**: Calculated as `Winning Votes / Total Votes` from all qualified patterns.
+*   **Consensus Probability (Prob%)**: ตั้งแต่ V4.5 ระบบใช้การหา **ค่าเฉลี่ยของความแม่นยำ (Average of Probabilities)** จากทุก Suffix Patterns ที่โหวตชนะ
+    *   สูตร: `SUM(Win_Rate_i) / Number_of_Patterns`
+    *   หน้าจอรายงานจะแสดงผลในรูปแบบ `Prob (Stats)` เช่น `76.0% (290)` โดย 290 คือจำนวนครั้งทั้งหมด (Historical Samples) ที่พบข้อมูล
+    *   **Strict Logic**: ระบบใช้ค่าดิบทางคณิตศาสตร์ (Raw Math) โดยไม่มีการปรุงแต่งค่า (No Artificial Caps) เพื่อให้สะท้อนความจริงของข้อมูลมากที่สุด
 
 #### Step 4: Verification (Forward Testing)
 The system does not just predict; it "marks its own homework."
@@ -77,5 +77,5 @@ As of V4.4, all markets are unified under the `MeanReversionEngine` logic for N+
 *   **Duplicate Cleanup**: `python scripts/maintenance/cleanup_duplicate_forecasts.py` - Ensures the log is clean for calculation.
 
 ---
-**Version 4.4 - Strategic Alignment Complete**
+**Version 4.5 - Final Consensus Logic Complete**
 *Date: February 23, 2026*

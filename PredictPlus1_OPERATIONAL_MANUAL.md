@@ -24,8 +24,10 @@ python run_daily_routine.py
 ### 📈 รายงานสรุป Fractal Consensus (Deep Dive)
 *   **ดูสรุปทุกตัว:** `python scripts/view_report.py ALL`
 *   **ดูเจาะจงรายตัว:** `python scripts/view_report.py PTT`
-    *   *ใช้ดูค่า Consensus, Probability %, และการโหวตของแต่ละ Suffix Pattern*
-    *   ✨ **V4.4 Logic:** แสดงเฉพาะ Pattern ที่มีข้อมูลย้อนหลัง 30 ครั้งขึ้นไป (ถ้าต่ำกว่าจะเป็น Weak และไม่ถูกนำมาคำนวณ)
+    *   ✨ **V4.5 Logic: Fractal Consensus** 
+        *   แสดงผลในรูปแบบ `Prob (Stats)` (เช่น `76.0% (290)`) ซึ่งคำนวณจาก **ค่าเฉลี่ยความแม่นยำ (Average of Probabilities)** ของกลุ่ม Suffix Patterns ที่ชนะ
+        *   **Win/Loss Stats**: สถิติกำไรขาดทุนจะแสดง Wins เป็นค่าบวก (+) และ Losses เป็นค่าลบ (-) เพื่อความเข้าใจที่ชัดเจน
+        *   ใช้เฉพาะ Pattern ที่มีข้อมูล 30 ครั้งขึ้นไปเท่านั้น (Global Standard)
 
 ### 🏆 แดชบอร์ดภาพรวมผลงาน (Executive Dashboard)
 *   **ดู Dashboard สรุป:** `python scripts/daily_forecast_dashboard.py`

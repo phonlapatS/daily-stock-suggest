@@ -221,34 +221,37 @@ class BasePatternEngine:
         total_up_win = sum(w[1] for w in p_winners)
         total_down_win = sum(w[1] for w in n_winners)
 
-        # 4. Final Decision
+        # 3. Final Decision Logic (Consensus approach)
+        # Winners only logic - patterns that don't satisfy the winning side's direction are ignored
         if total_up_win > total_down_win:
             forecast = 'UP'
+            winning_patterns = p_winners
             winning_count = total_up_win
-            if not n_winners:
-                total_sum = sum(w[1] + w[2] for w in p_winners)
-                prob = (total_up_win / total_sum * 100) if total_sum > 0 else 0
-            else:
-                total_sum = total_up_win + total_down_win
-                prob = (total_up_win / total_sum * 100)
-            avg_return = np.mean([w[3] for w in p_winners]) if p_winners else 0.0
+            total_sum = sum(w[1] + w[2] for w in p_winners)
         elif total_down_win > total_up_win:
             forecast = 'DOWN'
+            winning_patterns = n_winners
             winning_count = total_down_win
-            if not p_winners:
-                total_sum = sum(w[1] + w[2] for w in n_winners)
-                prob = (total_down_win / total_sum * 100) if total_sum > 0 else 0
-            else:
-                total_sum = total_up_win + total_down_win
-                prob = (total_down_win / total_sum * 100)
-            avg_return = np.mean([w[3] for w in n_winners]) if n_winners else 0.0
+            total_sum = sum(w[1] + w[2] for w in n_winners)
         else:
             return None # Tie = Discard
+
+        # 4. Probability Calculation: Average of Individual Probabilities (Consensus)
+        pattern_probs = []
+        for w in winning_patterns:
+            # w = (sub_pat, win_count, lose_count, mean_return)
+            total_i = w[1] + w[2]
+            p_i = (w[1] / total_i * 100) if total_i > 0 else 0
+            pattern_probs.append(p_i)
+        
+        final_prob = np.mean(pattern_probs) if pattern_probs else 0.0
+
+        avg_return = np.mean([w[3] for w in winning_patterns]) if winning_patterns else 0.0
 
         return {
             'pattern': active_pattern,
             'forecast': forecast,
-            'prob': round(prob, 1), 
+            'prob': round(final_prob, 1), 
             'avg_return': avg_return, 
             'total_p': total_up_win,
             'total_n': total_down_win,

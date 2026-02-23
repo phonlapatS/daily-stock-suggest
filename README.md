@@ -1,16 +1,14 @@
-# Stock Prediction System (v4.4)
+# Stock Prediction System (v4.5)
 
 📊 **Fractal N+1 Prediction System - Production-Ready Risk Management System**
 
-> **🆕 Version 4.4 Updates (2026-02-22):** "Aggregate Voting & Dynamic Streak"
-> - ✅ **Aggregate Voting (V4.4):** Consensus-based prediction using Winner-Takes-All across all pattern suffixes
-> - ✅ **Dynamic Streak Extraction:** Auto-scanning backwards until the first neutral day (No fixed length)
-> - ✅ **Statistical Gatekeeper:** Enforced Min 30 samples per suffix for reliable consensus
-> - ✅ **Simplified Reporting:** Streamlined terminal output (Symbol | Forecast | Prob%)
-> - ✅ **Suffix Breakdown:** Detailed per-suffix voting results stored in performance logs
-> - ✅ **5,000-Bar Verified:** Backtested on 260k+ trades with affirmed Alpha (70% Win Rates)
+> **🆕 Version 4.5 Updates (2026-02-23):** "Consensus Probability & Advanced Reporting"
+> - ✅ **Consensus Probability (V4.5):** Uses **Average of Probabilities** across all winning suffixes for superior statistical accuracy.
+> - ✅ **Advanced Reporting:** New `Prob (Stats)` format (e.g. `76.0% (290)`) showing total historical sample size in reports.
+> - ✅ **Strict Logic:** Removed artificial probability caps; system reflects raw mathematical win rates for absolute transparency.
+> - ✅ **Win/Loss Stats:** Intuitive display with Wins (+) and Losses (-) for immediate profit/drawdown visual context.
 > - ✅ **Repository:** [https://github.com/phonlapatS/daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)
-> - ✅ **Branch:** [version-4.4](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.4)
+> - ✅ **Branch:** [version-4.5](https://github.com/phonlapatS/daily-stock-suggest/tree/version-4.5) (Recommended)
 
 ## 🌎 Supported Assets (Total: 255+)
 
@@ -124,4 +122,4 @@ PredictPlus1 V4.4.7 moves away from single-pattern selection and uses **Aggregat
 3.  **Bootstrap:** Run `python scripts/backfill/generate_master_stats.py` to build the initial pattern database (recommended once).
 
 ---
-*Last Updated: 2026-02-22 | V4.4.7 Production*
+*Last Updated: 2026-02-23 | V4.5 Production*
