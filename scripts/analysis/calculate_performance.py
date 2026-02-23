@@ -56,7 +56,7 @@ def calculate_stats_from_log(log_file="logs/performance_log.csv"):
     #
     def calc_pnl(row):
         forecast = str(row['forecast']).upper()
-        # Use realized_change (Target Price - Scan Price) instead of signal change
+        # V4.5 Use realized_change as the source of truth for P/L (Scan Price -> Target Price)
         change = float(row.get('realized_change', 0.0)) if pd.notna(row.get('realized_change')) else 0.0
         
         if forecast == 'UP':
@@ -66,6 +66,20 @@ def calculate_stats_from_log(log_file="logs/performance_log.csv"):
         return 0.0
 
     completed_df['P/L'] = completed_df.apply(calc_pnl, axis=1)
+
+    # User Request: ตัดอันที่นับไม่ถึง 30 ออก (Require minimum 30 stats)
+    # And filter out illogical probabilities (Prob < 50%)
+    if 'stats' in completed_df.columns:
+        completed_df['stats'] = pd.to_numeric(completed_df['stats'], errors='coerce').fillna(0)
+        mask = (completed_df['stats'] >= 30)
+        if 'prob' in completed_df.columns:
+            completed_df['prob'] = pd.to_numeric(completed_df['prob'], errors='coerce').fillna(0)
+            mask = mask & (completed_df['prob'] >= 50.0)
+        completed_df = completed_df[mask]
+
+    if completed_df.empty:
+        print("ℹ️ No eligible trades found after applying filters (Stats >= 30, Prob >= 50%).")
+        return
 
     # Get Unique Markets
     markets = completed_df['exchange'].unique()
@@ -86,8 +100,9 @@ def calculate_stats_from_log(log_file="logs/performance_log.csv"):
         # ---------------------------------------------------------
         # LEVEL A: MARKET SUMMARY
         # ---------------------------------------------------------
-        profits = market_df[market_df['P/L'] > 0]
-        losses = market_df[market_df['P/L'] <= 0]
+        # Use 'correct' column for defining Profit/Loss trades to match Dashboard
+        profits = market_df[market_df['correct'] == 1]
+        losses = market_df[market_df['correct'] == 0]
         
         n_prof = len(profits)
         n_loss = len(losses)
@@ -120,8 +135,8 @@ def calculate_stats_from_log(log_file="logs/performance_log.csv"):
         # ---------------------------------------------------------
         stock_stats = []
         for symbol, s_df in market_df.groupby('symbol'):
-            s_profits = s_df[s_df['P/L'] > 0]
-            s_losses = s_df[s_df['P/L'] <= 0]
+            s_profits = s_df[s_df['correct'] == 1]
+            s_losses = s_df[s_df['correct'] == 0]
             
             n_s = len(s_df)
             n_w = len(s_profits)
@@ -168,8 +183,8 @@ def calculate_stats_from_log(log_file="logs/performance_log.csv"):
     print(f"🌍 GLOBAL MARKET SUMMARY (ALL {len(markets)} MARKETS)")
     print("!" * 115)
     
-    g_profits = completed_df[completed_df['P/L'] > 0]
-    g_losses = completed_df[completed_df['P/L'] <= 0]
+    g_profits = completed_df[completed_df['correct'] == 1]
+    g_losses = completed_df[completed_df['correct'] == 0]
     
     n_g_prof = len(g_profits)
     n_g_loss = len(g_losses)

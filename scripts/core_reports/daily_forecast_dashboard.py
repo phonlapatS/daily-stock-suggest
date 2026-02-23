@@ -11,6 +11,7 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
+import argparse
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -117,10 +118,21 @@ def get_accuracy_report():
         
     return res_df
 
-def display_executive_dashboard():
-    """แสดง Executive Dashboard"""
+def display_executive_dashboard(target_market=None):
+    """
+    แสดง Executive Dashboard
+    :param target_market: ถ้าระบุจะแสดงเฉพาะตลาดนั้น (เช่น 'SET', 'NASDAQ')
+    """
     today = datetime.now().strftime('%Y-%m-%d')
     tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    market_list = ['TWSE', 'SET', 'NASDAQ', 'HKEX']
+    if target_market:
+        target_market = target_market.upper()
+        if target_market in market_list:
+            market_list = [target_market]
+        else:
+            print(f"⚠️ Warning: Market '{target_market}' not in standard list {market_list}. Showing all.")
     
     print("=" * 100)
     print("📊 PREDICT N+1 DASHBOARD (V4.5 FINAL)")
@@ -161,7 +173,7 @@ def display_executive_dashboard():
     if tmr_df.empty:
         print("📋 No forecasts available for tomorrow")
     else:
-        for exchange in ['TWSE', 'SET', 'NASDAQ', 'HKEX']:
+        for exchange in market_list:
             ex_df = tmr_df[tmr_df['exchange'] == exchange]
             if not ex_df.empty:
                 print(f"--- {exchange} ---")
@@ -203,7 +215,7 @@ def display_executive_dashboard():
         print(f"{'Market':<12} {'Trades':<8} {'Wins':<8} {'Winrate':<10} {'Avg Win':<10} {'Avg Loss':<10}")
         print("-" * 75)
         
-        for exchange in ['TWSE', 'SET', 'NASDAQ', 'HKEX']:
+        for exchange in market_list:
             ex_acc_df = acc_df[acc_df['exchange'] == exchange]
             if not ex_acc_df.empty:
                 m_total = ex_acc_df['total'].sum()
@@ -225,7 +237,7 @@ def display_executive_dashboard():
 
         # 2b. Per-Stock Details (V4.5 Standard Format)
         print("🎯 PER-STOCK PRECISION VIEW (STRATEGY INSIGHTS):")
-        for exchange in ['TWSE', 'SET', 'NASDAQ', 'HKEX']:
+        for exchange in market_list:
             ex_acc_df = acc_df[acc_df['exchange'] == exchange]
             if not ex_acc_df.empty:
                 print(f"--- {exchange} ---")
@@ -275,4 +287,8 @@ def display_executive_dashboard():
     print("=" * 100)
 
 if __name__ == "__main__":
-    display_executive_dashboard()
+    parser = argparse.ArgumentParser(description="Predict N+1 Executive Dashboard")
+    parser.add_argument("--market", type=str, help="Filter by market (SET, NASDAQ, TWSE, HKEX)")
+    args = parser.parse_args()
+    
+    display_executive_dashboard(target_market=args.market)

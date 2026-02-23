@@ -54,7 +54,7 @@ COLUMNS = [
     'scan_date', 'target_date', 'symbol', 'exchange', 'pattern',
     'forecast', 'prob', 'conf', 'stats', 'price_at_scan',
     'change_pct', 'threshold', 'avg_return', 'total_bars',
-    'actual', 'price_actual', 'correct', 'last_update'
+    'actual', 'price_actual', 'realized_change', 'correct', 'last_update'
 ]
 
 MIN_MATCHES = config.MIN_MATCHES_THRESHOLD
@@ -483,9 +483,10 @@ def main():
                         'change_pct': round(change_pct, 2),
                         'threshold': round(threshold_pct, 2),
                         'avg_return': round(change_pct, 2),
-                        'total_bars': int(np.mean([d['bars'] for d in pattern_decisions if d['side'] == winning_side])),
+                        'total_bars': int(np.mean([d['total'] for d in winning_patterns])),
                         'actual': actual,
                         'price_actual': round(price_actual, 2) if price_actual else None,
+                        'realized_change': round(actual_change, 2) if 'actual_change' in locals() else 0.0,
                         'correct': correct,
                         'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     }
@@ -510,7 +511,7 @@ def main():
             except Exception as e:
                 print(f"  ❌ [{asset_count}/{total_assets}] {display_name}: {e}")
 
-            time.sleep(0.2)
+            # time.sleep(0.1) # Reduced for speed during verification
 
     # ==========================================
     # Save to performance_log.csv
