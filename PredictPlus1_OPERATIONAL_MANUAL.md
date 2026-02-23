@@ -1,37 +1,39 @@
-# PredictPlus1 V4.4.7 — คู่มือการใช้งานคำสั่ง (Operational Commands Manual) 📘
+# PredictPlus1 V4.5 — คู่มือการใช้งานคำสั่ง (Operational Commands Manual) 📘
 
-คู่มือนี้รวบรวมคำสั่งพื้นฐานและการใช้งานระบบระดับสูง ทั้งการสแกนรายวัน, การดูรายงาน, และการดึงข้อมูลย้อนหลัง (Backfill)
+คู่มือนี้รวบรวมคำสั่งพื้นฐานและการใช้งานระบบระดับสูง ทั้งการสแกนรายวัน, การดูรายงาน, และการวัดผลความแม่นยำ
 
 ---
 
 ## 🚀 1. การรันระบบประจำวัน (Daily Routine)
 
-หากต้องการรันทุกอย่างในขั้นตอนเดียว (สแกน -> คำนวณ -> ทำรายงาน -> แดชบอร์ด):
+หากต้องการรันทุกอย่างในขั้นตอนเดียว (สแกน -> ลง Log -> ทำรายงาน -> แดชบอร์ด):
 ```powershell
 python run_daily_routine.py
 ```
 
 ### คำสั่งแยกส่วน (Manual Commands)
-*   **รันหลัก (สแกน + ตรวจการบ้าน):** `python main.py`
-    *   ระบบจะดึงราคาเพื่อทำนายใหม่ **และจะตรวจผลของเมื่อวานให้โดยอัตโนมัติ**
-*   **ตรวจผลแบบ Manual (ส่องประวัติ):** `python scripts/check_forward_testing.py --verify`
-    *   ใช้สำหรับเจาะลึกดูประวัติ หรือบังคับตรวจผลโดยไม่ต้องรันสแกนใหม่
+*   **เริ่มสแกนทำนาย (Predict N+1):** `python main.py`
+    *   ทำนายราคาสำหรับวันพรุ่งนี้ (N+1) โดยใช้เกณฑ์ **30-Match Minimum** และ **Mean Reversion Engine** ในทุกตลาด
+*   **ตรวจสอบและ Verify ผล (Verify):** `python scripts/core_reports/check_forward_testing.py --verify`
+    *   ดึงราคาปัจจุบันมาเปรียบเทียบกับคำทำนายเมื่อวานเพื่อสรุปผล Correct/Incorrect
 
 ---
 
 ## 📊 2. การดูรายงานเชิงลึก (Reporting & Analysis)
 
-### 📈 รายงานสรุป Consensus
-*   **ดูสรุปทุกตัว:** `python scripts/core_reports/view_report.py ALL`
-*   **ดูเจาะจงรายตัว:** `python scripts/core_reports/view_report.py PTT` (หรือ Ticker อื่นๆ)
-    *   *ใช้ดูค่า Consensus, Probability %, และ Weight การโหวตของแต่ละ Pattern*
-    *   ✨ **V4.4.7 Feature:** เพิ่มส่วน **CONSENSUS BREAKDOWN** แสดงคะแนนดิบ (Wins/Losses) ของแต่ละ Suffix Pattern เพื่อความโปร่งใสก่อนสรุปผล
+### 📈 รายงานสรุป Fractal Consensus (Deep Dive)
+*   **ดูสรุปทุกตัว:** `python scripts/view_report.py ALL`
+*   **ดูเจาะจงรายตัว:** `python scripts/view_report.py PTT`
+    *   *ใช้ดูค่า Consensus, Probability %, และการโหวตของแต่ละ Suffix Pattern*
+    *   ✨ **V4.4 Logic:** แสดงเฉพาะ Pattern ที่มีข้อมูลย้อนหลัง 30 ครั้งขึ้นไป (ถ้าต่ำกว่าจะเป็น Weak และไม่ถูกนำมาคำนวณ)
 
-### 🏆 รายงานผลตอบแทน (Stat Analytics)
+### 🏆 แดชบอร์ดภาพรวมผลงาน (Executive Dashboard)
+*   **ดู Dashboard สรุป:** `python scripts/daily_forecast_dashboard.py`
+    *   แสดงทั้งคำทำนายของวันพรุ่งนี้ และสรุปความแม่นยำ (Winrate/RRR) ย้อนหลังทุกลำดับ
+
+### 🎯 การคำนวณประสิทธิภาพ (Performance Analysis)
 *   **สรุป Win-Rate รายตลาด:** `python scripts/analysis/calculate_performance.py`
     *   คำนวณ Win/Loss, Avg Profit, และสร้างไฟล์สรุปใน `data/stats_[market].csv`
-*   **ดูประวัติความแม่นยำ:** `python scripts/analysis/view_accuracy.py`
-    *   แสดงความแม่นยำย้อนหลัง 7, 30, 90 วัน แบ่งตาม Ticker
 
 ---
 
