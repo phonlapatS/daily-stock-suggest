@@ -831,10 +831,10 @@ def backtest_single(tv, symbol, exchange, n_bars=200, threshold_multiplier=None,
         
         elif is_intraday:
             # Intraday Metals: แยก logic ตาม engine จาก config
-            # Gold: TREND_FOLLOWING (Breakout ตาม Session - Flow เงินเข้าชัดเจนช่วงเปิดตลาด)
+            # Gold: TREND_MOMENTUM (Breakout ตาม Session - Flow เงินเข้าชัดเจนช่วงเปิดตลาด)
             # Silver: MEAN_REVERSION (Fakeout - High Volatility, False Break บ่อย)
             engine = kwargs.get('engine', 'MEAN_REVERSION')
-            if engine == "TREND_FOLLOWING":
+            if engine == "TREND_MOMENTUM":
                 # Gold: Breakout Logic - ตาม momentum (เหมาะกับพฤติกรรมของทอง)
                 if last_directional == '+': intended_dir = 1
                 elif last_directional == '-': intended_dir = -1
@@ -1242,8 +1242,9 @@ def backtest_all(n_bars=200, skip_intraday=True, full_scan=False, target_group=N
                     fixed_thresh = group_config.get('fixed_threshold')
                     inverse_log = group_config.get('inverse_logic', False)
                     min_adx_val = group_config.get('min_adx')
+                    engine_type = group_config.get('engine')
                     # Pass all kwargs through (for China market testing: stop_loss, take_profit, max_hold, etc.)
-                    result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=False, fixed_threshold=fixed_thresh, inverse_logic=inverse_log, threshold_multiplier=threshold_multiplier, min_adx=min_adx_val, production=production, **kwargs)
+                    result = backtest_single(tv, symbol, exchange, n_bars=n_bars, verbose=False, fixed_threshold=fixed_thresh, inverse_logic=inverse_log, threshold_multiplier=threshold_multiplier, min_adx=min_adx_val, production=production, engine=engine_type, **kwargs)
                     
                     if result:
                         success = True

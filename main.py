@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-main.py - Fractal N+1 Prediction Runner (Categorized Edition)
+main.py - Fractal N+1 Prediction Runner (Categorized Edition V5.1)
 =============================================================
 Orchestrates the entire pipeline: 
 Fetch -> Process -> Categorize -> Report -> Forget.
@@ -536,23 +536,9 @@ def main():
         except Exception:
             pass  # If file is corrupted, scan everything fresh
     
-    # Priority 3: เช็คจาก cache files โดยตรง (V5.2 - New!)
-    # ถ้ามี cache fresh → skip (ไม่ต้อง fetch ใหม่)
-    from core.data_cache import has_cache, is_cache_fresh
-    cache_skipped = 0
-    for group_name, settings in config.ASSET_GROUPS.items():
-        for asset in settings['assets']:
-            symbol = asset['symbol']
-            exchange = asset.get('exchange', 'SET')
-            # เช็คว่ามี cache และ fresh
-            if has_cache(symbol, exchange) and is_cache_fresh(symbol, exchange):
-                # เช็คว่ายังไม่ได้อยู่ใน already_scanned
-                if symbol not in already_scanned:
-                    already_scanned.add(symbol)
-                    cache_skipped += 1
-    
-    if cache_skipped > 0:
-        print(f"⚡ Smart Resume: Found {cache_skipped} symbols with fresh cache. Added to skip list!")
+    # Priority 3: Removed incorrectly implemented skip-by-cache logic. 
+    # Data cache freshness does not imply a scan was already performed today.
+    # Priority 1 (Perf Log) and Priority 2 (Forecast CSV) are sufficient.
     
     # Load perf_log_df for market time check
     if os.path.exists(perf_log_file):
@@ -762,11 +748,9 @@ def main():
                 # Filter by configurable thresholds
                 eligible = []
                 for r in all_results:
-                    # Get the winning side (higher prob)
-                    bull_prob = r.get('bull_prob', 50)
-                    bear_prob = r.get('bear_prob', 50)
-                    max_prob = max(bull_prob, bear_prob)
-                    matches = r.get('matches', 0)
+                    # V6.3: Fix key mismatch (acc_score is the max prob in Version 5)
+                    max_prob = r.get('acc_score', 50.0)
+                    matches = r.get('total_events', 0)
                     
                     # Check thresholds
                     if max_prob > MIN_PROB_THRESHOLD and matches >= MIN_MATCHES_THRESHOLD:

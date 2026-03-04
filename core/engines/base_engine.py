@@ -236,15 +236,11 @@ class BasePatternEngine:
         else:
             return None # Tie = Discard
 
-        # 4. Probability Calculation: Average of Individual Probabilities (Consensus)
-        pattern_probs = []
-        for w in winning_patterns:
-            # w = (sub_pat, win_count, lose_count, mean_return)
-            total_i = w[1] + w[2]
-            p_i = (w[1] / total_i * 100) if total_i > 0 else 0
-            pattern_probs.append(p_i)
-        
-        final_prob = np.mean(pattern_probs) if pattern_probs else 0.0
+        # 4. Probability Calculation: Total Weighted Probability
+        # Sum win counts from winning-side patterns / total events from those patterns
+        total_wins = sum(w[1] for w in winning_patterns)
+        total_all = sum(w[1] + w[2] for w in winning_patterns)
+        final_prob = (total_wins / total_all * 100) if total_all > 0 else 0.0
 
         avg_return = np.mean([w[3] for w in winning_patterns]) if winning_patterns else 0.0
 

@@ -1,84 +1,118 @@
-# PredictPlus1 System Documentation (V5.0)
-## Unified Fractal Prediction Architecture
+# PredictPlus1 System Documentation (V5.1)
+## Unified Fractal Prediction Architecture (Fixed 0.5% Standard)
 
-**Project Status (2026-02-23):** ระบบเข้าสู่ความเสถียรในระดับ **V5.0 Audited Logic** มีการแก้ไขความคลาดเคลื่อนทางสถิติ (Probability Overflow) และปรับการรายงานผล P/L ให้เป็นมาตรฐานเดียวกัน (`realized_change`) ทุกลำดับ พร้อมผลการตรวจสอบความแม่นยำย้อนหลังแบบ 100% สอดคล้องกับ Dashboard ครับ
+**Project Status (2026-02-25):** ระบบพัฒนาจนถึงจุดที่มีความเสถียรระดับ V5.1 โดยมีการปรับเปลี่ยนสำคัญคือ การใช้เกณฑ์ **Fixed 0.5%** เป็นมาตรฐานการกรองสัญญาณเพื่อให้ระบบไวต่อความเคลื่อนไหว และเพิ่มการคำนวณ **Net PnL (ผลกำไรคาดหวังสุทธิ)** เพื่อใช้คัดกรองสัญญาณเทรดที่คุ้มค่าที่สุด
 
----
-
-### 1. Core Philosophy: Statistical Pattern Matching
-PredictPlus1 V4.4 operates as a **Pure Statistical Prediction Engine**. Its primary goal is to identify high-probability price movements for the next trading day (N+1) based on historical fractal patterns.
-
-*   **Fractal Consistency**: The system assumes that market behavior repeats in recognizable fractal sequences.
-*   **Volatility-Based Trigger**: Predictions are only generated when the current day's price movement exceeds a dynamic volatility threshold (Threshold-Only logic).
-*   **Indicator Separation**: Technical indicators (SMA, ADX, RSI, etc.) are strictly reserved for the **Backtest/Execution** phase. The **Prediction (N+1)** phase is purely data-driven based on pattern matching.
+เอกสารฉบับนี้คือ **คู่มืออธิบายการทำงานหลัก (Master Handbook)** ที่ถูกเขียนขึ้นเพื่อให้อ่านเข้าใจง่ายและเห็นภาพรวมการทำงานของระบบทั้งหมด ตั้งแต่การดึงข้อมูลดิบ การเรียบเรียงข้อมูล ไปจนถึงกระบวนการทางสถิติที่ใช้ในการทำนายทิศทางตลาด (Predict N+1)
 
 ---
 
-### 2. The N+1 Prediction Pipeline
+## 🏗️ 1. สถาปัตยกรรมระบบขั้นพื้นฐาน (Core Architecture)
 
-The system follows a rigid sequence to generate and verify forecasts:
+ระบบ Predict N+1 ทำงานภายใต้แนวคิด **Statistical Pattern Matching** (การจับคู่รูปแบบทางสถิติ) โดยเชื่อว่าพฤติกรรมการซื้อขายแบบเดิมๆ ของมนุษย์จะสะท้อนออกมาในกราฟราคาซ้ำแล้วซ้ำเล่า
 
-#### Step 1: Data Acquisition & Pre-processing
-*   **Source**: Real-time and historical data from TradingView.
-*   **Window**: 5,000 bars of historical data per symbol (approx. 20 years for daily data).
-*   **Normalization**: Raw prices are converted to percentage changes (`(Close - Open) / Open`) to ensure scale-invariance across different stock prices.
-
-#### Step 2: Dynamic Volatility Thresholding
-Every symbol has its own "Normal Range" of movement.
-*   **Calculation**: `Max(20-day SD, 252-day SD, Market Floor)`.
-*   **Market Floors**: 
-    *   Thai Market: 1.0%
-    *   US Market: 0.5%
-    *   Taiwan/China: 0.5%
-*   **Trigger**: A pattern is only "Active" if today's move is greater than this threshold.
-
-#### Step 3: Fractal Pattern Consensus (Aggregate Voting)
-When a move is detected, the system breaks the recent price action into "Suffix Patterns" (e.g., if the pattern is `+ - +`, it checks `+`, `- +`, and `+ - +`).
-*   **Global Standard**: Every pattern must have occurred at least **30 times** in the last 20 years to be statistically significant.
-*   **Consensus Probability (Prob%)**: ตั้งแต่ V5.0 ระบบใช้การหา **ค่าเฉลี่ยของความแม่นยำ (Average of Probabilities)** จากทุก Suffix Patterns ที่โหวตชนะ และมีการ **Cap ค่าไม่ให้เกิน 100%** เพื่อความถูกต้องทางคณิตศาสตร์
-    *   สูตร: `MIN(SUM(Win_Rate_i) / Number_of_Patterns, 100.0)`
-    *   หน้าจอรายงานจะแสดงผลในรูปแบบ `Prob (Stats)` เช่น `76.0% (290)` โดย 290 คือจำนวนครั้งทั้งหมด (Historical Samples) ที่พบข้อมูล
-    *   **Reporting Synchronicity**: ระบบบังคับใช้เกณฑ์กรองเดียวกันทั่วทั้งระบบ (`Stats >= 30` และ `Prob >= 50%`) เพื่อให้ตัวเลขใน Dashboard และสรุปผลประกอบการตรงกัน 100%
-
-#### Step 4: Verification (Forward Testing)
-The system does not just predict; it "marks its own homework."
-*   **Target Date**: N+1 (The next trading day).
-*   **Verification**: Once the target day's market closes, the system fetches the actual price action.
-*   **Accuracy Check**: If `Forecast == Actual Direction`, it is marked as `Correct (1)`.
+การทำงานของระบบถูกแบ่งเป็น 4 ส่วนหลัก:
+1. **Data Pipeline**: การจัดการข้อมูลประวัติศาสตร์และอัปเดตข้อมูลรายวัน
+2. **Signal Processor**: การแปลงเปอร์เซ็นต์ราคาให้เป็นสัญลักษณ์ (+, -, .)
+3. **Statistical Core Engine**: การนำสัญลักษณ์ไปเช็คกับสถิติในอดีตเพื่อหาทิศทางถัดไป
+4. **Secondary Filters**: การนำสัญญาณที่ได้ไปกรองความเสี่ยงซ้อนทับอีกรอบ
 
 ---
 
-### 3. Unified Market Configurations
-As of V4.4, all markets are unified under the `MeanReversionEngine` logic for N+1 prediction:
+## 📥 2. ระบบจัดการข้อมูล (Data Pipeline Logic)
 
-| Market | Engine | Min Matches | Min Prob | Filtering Criteria |
-| :--- | :--- | :--- | :--- | :--- |
-| **Thai (SET)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
-| **US (NASDAQ)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
-| **Taiwan (TWSE)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
-| **China (HKEX)** | MEAN_REVERSION | 30 | 50% | Stats >= 30, Prob >= 50% |
+ระบบจำเป็นต้องดึงข้อมูลหุ้นในปริมาณมหาศาลเพื่อความแม่นยำทางสถิติ จึงแบ่งการทำงานย่อยเป็น:
 
-> [!NOTE]
-> **Dashboard Filter**: ตลาดที่มีข้อมูลน้อยกว่า 30 ครั้ง (Sample Size) หรือความน่าจะเป็นต่ำกว่า 50% จะไม่ถูกแสดงใน Dashboard เพื่อลดสัญญาณหลอก (Noise) และรักษาระดับคุณภาพของสัญญาณ (Signal Quality)
+### A. ซอฟต์แวร์โหลดข้อมูลตั้งต้น (`pipeline/bulk_data_loader.py`)
+ทำหน้าที่เตรียมความพร้อมของข้อมูลประวัติศาสตร์ "ครั้งแรก" ให้กับระบบ
+- ดึงข้อมูลราคาปิด/เปิดของหุ้นรายวัน ผ่าน `tvDatafeed`
+- โหลดข้อมูลย้อนหลังกลับไป **5,000 วันทำการ (ประมาณ 20 ปี)** 
+- เซฟข้อมูลลงเป็นไฟล์ `.parquet` เพื่อให้ระบบนำไปอ่านต่อได้อย่างรวดเร็ว
 
----
-
-### 4. Operational Commands (Daily Routine)
-
-| Task | Command | Description |
-| :--- | :--- | :--- |
-| **1. Run Prediction** | `python main.py` | Scans all markets and logs new forecasts. |
-| **2. Deep Dive** | `python scripts/view_report.py ALL` | Shows mathematical breakdown of the decision. |
-| **3. Executive View** | `python scripts/daily_forecast_dashboard.py` | Summarizes performance and signals. |
-| **4. Verify Results** | `python scripts/check_forward_testing.py --verify` | Checks if yesterday's predictions were correct. |
-| **5. Full Statistics** | `python scripts/calculate_performance.py` | Computes Winrates and RRR per market. |
+### B. ซอฟต์แวร์อัปเดตข้อมูลรายวัน (`pipeline/data_updater.py`)
+ทำหน้าที่ตามเก็บข้อมูลเฉพาะในแต่ละวันหลังตลาดปิด
+- ระบบจะเช็คก่อนว่าข้อมูลล่าสุดในคอมพิวเตอร์คือวันที่เท่าไหร่
+- จากนั้นจะดาวน์โหลดเฉพาะข้อมูลแท่งเทียนที่ยังขาดหาย (Delta) มาต่อท้ายไฟล์เดิม ทำให้รันได้เร็วและไม่ใช้งานข้อมูลซ้ำซ้อน
 
 ---
 
-### 5. Maintenance & Cleaning
-*   **Cache Management**: `python scripts/maintenance/clear_cache.py` - Clears old data to force a fresh scan.
-*   **Duplicate Cleanup**: `python scripts/maintenance/cleanup_duplicate_forecasts.py` - Ensures the log is clean for calculation.
+## 🧠 3. กลไกการพยากรณ์ Predict N+1 (The Core Engine)
+
+ส่วนนี้คือสมองหลักของระบบ ซึ่งทำหน้าที่หาสัญญาณของวันพรุ่งนี้ (N+1) โดยกระบวนการคิดทั้งหมดตั้งอยู่บนฐานสถิติของการเทียบรูปแบบราคาในอดีตอย่างละเอียด
+
+### Step 1: การลดรูปราคาให้เป็นสัญลักษณ์ (DNA Encoding & Fixed 0.5%)
+เริ่มต้น ระบบจะต้องตัดสัญญาณรบกวนขนาดย่อมๆ (Noise) ของตลาดทิ้งไปเสียก่อน โดยตั้งเกณฑ์ที่ **0.5%** ถ้าราคาขยับไม่ถึงตามนี้ เราจะไม่สนใจ
+
+ระบบจะนำราคา `((Close-Open)/Open)` ย้อนหลัง 20 ปี มาให้ค่าตามนี้:
+- **(+) Positive**: วันที่ราคาปิดบวกเกิน +0.5% 
+- **(-) Negative**: วันที่ราคาปิดลบเกิน -0.5%
+- **(.) Neutral**: วันที่ราคาขยับไปมาแคบๆ ไม่ถึง 0.5% วันนี้จะถูกมองว่าเป็นวันที่นิ่ง
+
+*(สุดท้าย ระบบจะได้ข้อมูลยาว 20 ปี ที่หน้าตาออกมาเป็นสตริงยาวๆ เช่น `.+..-+-+.-..+...`)*
+
+### Step 2: การหากรอบโมเมนตัมปัจจุบัน (Dynamic Active Pattern)
+ระบบจะทำการวิเคราะห์ว่าโมเมนตัมตลาดล่าสุดกำลังวิ่งไปทิศทางไหน
+วิธีการคือ **เราจะดูจากวันปัจจุบันแล้วย้อนกลับไปเรื่อยๆ ตามลำดับ จนกว่าจะเจอวันที่นิ่ง (คือวันที่ได้ค่าเป็น `.`) ระบบจะหยุดอ่านตรงนั้นทันที** 
+
+*ตัวอย่าง:* วันนี้บวก (+), เมื่อวานลบ (-), วันก่อนก็ลบ (-), สามวันก่อนบวก (+), ส่วนสี่วันก่อนราคาขยับไม่เกิน threshold (.) เราจะหยุดดูแค่ตรงนี้
+-> **แสดงว่าโมเมนตัมที่เราเพิ่งเจอคือ: `+--+`**
+
+### Step 3: การย่อย Pattern และการสืบค้นข้อมูลในอดีต (Suffix Breakdown & Historical Scan)
+จากโจทย์เมื่อกี้ สมมติว่าระบบเจอ Pattern ในหลักล่าสุดเป็น `+--+` การทำงานขั้นถัดมาคือมันจะ Break Down หรือแตกย่อย Pattern ออกมาตามมิติดังนี้:
+*   `+`
+*   `-+`
+*   `--+`
+*   `+--+`
+
+**ต่อไประบบก็จะนำ Pattern ที่แตกย่อยทั้งหมดนี้ ไปสแกนย้อนดูว่าในหน้าประวัติศาสตร์แบบนี้ เคยเกิด Pattern ลักษณะนี้กี่ครั้ง แล้วจากสถิติในอดีต วันต่อไปของซีรีย์นั้นหน้าตามันจะ Up กราฟขึ้น หรือ Down กราฟลง กี่ครั้ง**
+
+กระบวนการนี้จะกวาดหา "ทุกความเป็นไปได้" จริงๆ ทำให้เราดึงข้อมูลสถิติเชิงลึกออกมาทั้งหมด
+
+### Step 4: การคำนวณเสียงข้างมาก (Aggregate Voting & Final Consensus)
+เมื่อกวาดสถิติในอดีตครบทั้งหมด ระบบจะนำผลคะแนนที่ได้มาสู้กัน 
+
+*ตัวอย่างผลสถิติที่ระบบพบ:*
+- **Pattern `+`**: จากประวัติศาสตร์เคยเกิดแบบนี้ 1,200 ครั้ง 👉 วันต่อไปตกลงมา (DOWN) 700 ครั้ง (Win Rate ตก = 58.3%)
+- **Pattern `-+`**: เคยเกิด 350 ครั้ง 👉 วันต่อไปตกลงมา (DOWN) 210 ครั้ง (Win Rate ตก = 60.0%)
+- **Pattern `--+`**: เคยเกิด 45 ครั้ง 👉 วันต่อไปดีดกลับไปขึ้น (UP) 25 ครั้ง (Win Rate ขึ้น = 55.5%)
+- **Pattern `+--+`**: เคยเกิดน้อยเพียง 12 ครั้ง 👉 *(ระบบตัดข้อมูลชุดนี้ทิ้ง เพราะถ้าจำนวนเก็บไม่ถึง 30 เหตุการณ์ มักเป็นสัญญาณหลอก)*
+
+**คำตัดสินทิศทาง (Forecast):** ตอนนี้ฝั่ง **DOWN** ชนะไปแบบ 2-1 เสียง ดังนั้นพรุ่งนี้ระบบทายทิศลงชัวร์ๆ
+**ค่าความน่าจะเป็น (Final Probability):** ระบบจะนำเปอร์เซ็นต์ Win Rate จาก "รูปแบบที่โหวตฝั่งชนะเท่านั้น" มาหาค่าเฉลี่ย: `(58.3% + 60.0%) / 2 = 59.15%` ความเป็นไปได้คือ 59.15%
 
 ---
-**Version 5.0 - Audited Statistics & Sync Complete**
-*Date: February 23, 2026*
+
+## 💰 4. การหากำไรคาดหวังแบบรวมสุทธิ (Realized Net PnL)
+
+สมมติว่าโอกาสทายถูกฝั่ง DOWN ถึง 59.15% แต่ก็อาจจะไม่น่าลงทุนถ้าเวลาแพ้ทีนึงจะเสียเงินมหาศาลเกินไป
+
+ระบบจึงเข้ามาหากำไรจาก **ค่าคาดหวังผลสุทธิ (Net PnL)** เพิ่มเติม โดยนำตัวเลข "เปอร์เซ็นต์ราคาที่จะได้กำไรเฉลี่ยเวลาทางถูก" และ "เปอร์เซ็นต์ราคาที่จะเสียเงินเฉลี่ยเวลาที่ระบบทายผิด" ในหน้าประวัติศาสตร์ มาเข้าสมการง่ายๆ :
+
+- **Avg Win (%)**: สัดส่วนที่ราคามักจะร่วงลงจริงตามเป้า เมื่อระบบแทงถูก (สมมติว่าได้เฉลี่ย +1.5%)
+- **Avg Loss (%)**: สัดส่วนที่ราคามักจะดีดสวนพอร์ต เมื่อระบบทายพลาด (สมมติว่าลบเฉลี่ย -1.0%)
+- **สมการตรวจเช็ค Net PnL**: `(0.5915 x 1.5%) + (0.4085 x -1.0%) = +0.479%`
+
+หาก Net PnL ที่คำนวณแล้วพุ่งเป็นเครื่องหมายบวก (อย่างเช่น 0.479%) ระบบจะให้สัญญาณเขียวผ่าน เป็นเครื่องยืนยันว่ากลยุทธ์ตามสถิตินี้ลงทุนได้จริง นี่คือมิติที่ลึกซึ้งในการสร้าง Dashboard ให้กับตัวผู้พยากรณ์นั่นเอง
+
+---
+
+## 🛡️ 5. ตัวกรองความเสี่ยงเสริม (Secondary Risk Filters)
+
+หลังจากแกนหลัก 20 ปีผ่านแล้ว ระบบจะนำสัญญาณเข้าทดสอบความถูกต้องกับตัวกรองความเสี่ยง (Filters) อีกชั้นเสมอ:
+- **ตัวอย่างเช่น Filter: Multi-timeframe**: ต่อให้ระบบ N+1 จะสั่งแทงขึ้น (UP) ในกรอบเวลารายวัน (Daily) แต่เมื่อแปลงข้อมูลชุดเดียวกันนี้เป็นกราฟระดับแท่งสัปดาห์ (Weekly OHLC) แล้วเทรนระดับใหญ่เป็นขาลงหนักๆ ตัวระบบ Filter นี้จะตีปฏิเสธหรือตัดสัญญาณการพยากรณ์แบบ Daily ตกไปทันที
+
+---
+
+## ✅ 6. วงจรรวบรวมผลการตอบรับ (Traceability & Accuracy Tracking)
+
+ความแม่นยำ 100% ในวันวานของตลาด ไม่มีค่าเท่าความจริงในชีวิตตลาด ระบบ V5.1 จึงมีกลไก "ตรวจการบ้านรายวัน" ปิดกั้นการโมเมมั่วซั่วของโปรแกรม
+
+1. **พยากรณ์วันนี้ (Predict N+1)**: สั่งทายทิศทางพรุ่งนี้ แล้วเซฟ Forecast สต๊าฟไว้
+2. **รอดูความเป็นจริง (Actual View)**: สิ้นสุดตลาดพรุ่งนี้ ระบบจะดึงกราฟจริงมาเช็คกับสมุดจด
+3. **ตรวจสอบถูกผิด (Verification)**: ถ้ากราฟจริงไปทิศทางเดียวกับ Forecast โปรเกรมจะตีตราประทับ `CORRECT` หากผิดไปก็จะตีตรา `INCORRECT` 
+
+ผลประกอบการล่าสุด ทั้ง Win Rate ของกราฟรายเดือน ก็ล้วนมาจากการตีประทับตราแบบวันต่อวันที่สะสมกันทั้งนั้น นี่เป็นระบบที่เปิดเผยผลกำไรและความพ่ายแพ้แบบ 100% ตรงไปตรงมาที่สุด
+
+---
+**PredictPlus1 V5.1 - Core Mechanisms & Actionable Explanation**
+*อัปเดตอธิบายภาษา: 25 กุมภาพันธ์ 2026*

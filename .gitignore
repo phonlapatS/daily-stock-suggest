@@ -1,7 +1,15 @@
 # Data
 data/*.parquet
 *.parquet
-*.csv
+data/cache/
+data/*.csv
+!data/forecast_tomorrow.csv
+!data/thai_set100.txt
+!data/nasdaq_stocks.txt
+
+# Logs
+logs/*.csv
+!logs/performance_log.csv
 
 # System
 .DS_Store
@@ -17,3 +25,7 @@ env/
 venv/
 .env
 .ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/

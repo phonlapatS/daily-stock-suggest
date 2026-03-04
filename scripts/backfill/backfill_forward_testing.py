@@ -60,21 +60,19 @@ COLUMNS = [
 MIN_MATCHES = config.MIN_MATCHES_THRESHOLD
 MIN_PROB = config.MIN_PROB_THRESHOLD
 
-# Market config (same floors as engines)
+# Market config (Standardized to 0.5% floor globally)
 MARKET_FLOORS = {
-    'GROUP_A_THAI':       0.01,
-    'GROUP_B_US':         0.006,
-    'GROUP_C1_GOLD_30M':  0.003,
-    'GROUP_C2_GOLD_15M':  0.003,
-    'GROUP_D1_SILVER_30M':0.003,
-    'GROUP_D2_SILVER_15M':0.003,
-    'GROUP_C_CHINA_HK':   0.008,
-    'GROUP_D_TAIWAN':     0.009,
+    'GROUP_A_THAI':       0.005,
+    'GROUP_B_US':         0.005,
+    'GROUP_C1_GOLD_30M':  0.005,
+    'GROUP_C2_GOLD_15M':  0.005,
+    'GROUP_D1_SILVER_30M':0.005,
+    'GROUP_D2_SILVER_15M':0.005,
+    'GROUP_C_CHINA_HK':   0.005,
+    'GROUP_D_TAIWAN':     0.005, 
 }
 
 # Direction logic per market (same as engines)
-# Mean Reversion: pattern ends '+' → forecast DOWN, '-' → UP
-# Trend Following: pattern ends '+' → forecast UP, '-' → DOWN
 MARKET_DIRECTION = {
     'GROUP_A_THAI':       'reversion',
     'GROUP_B_US':         'trend',
@@ -83,7 +81,7 @@ MARKET_DIRECTION = {
     'GROUP_D1_SILVER_30M':'reversion',
     'GROUP_D2_SILVER_15M':'reversion',
     'GROUP_C_CHINA_HK':   'reversion',
-    'GROUP_D_TAIWAN':     'trend',
+    'GROUP_D_TAIWAN':     'reversion', # Sync with config.py (Mean Reversion)
 }
 
 
@@ -119,8 +117,14 @@ def load_master_stats():
     return lookup
 
 
-def calculate_threshold(pct_change, floor):
-    """Threshold = MAX(20d SD, 252d SD, floor)"""
+def calculate_threshold(pct_change, floor, fixed=False):
+    """
+    If fixed=True: return fixed floor.
+    Otherwise: Threshold = MAX(20d SD, 252d SD, floor)
+    """
+    if fixed:
+        return pd.Series(floor, index=pct_change.index)
+        
     short_std = pct_change.rolling(20).std()
     long_std = pct_change.rolling(252).std()
     effective = np.maximum(short_std, long_std.fillna(0))
@@ -320,7 +324,8 @@ def main():
                     continue
 
                 pct_change = df['close'].pct_change()
-                effective_std = calculate_threshold(pct_change, floor)
+                # V4.6.9: Force FIXED=True for all markets per mentor standardization
+                effective_std = calculate_threshold(pct_change, floor, fixed=True)
 
                 # หา trading days ในช่วงที่ต้องการ
                 dates = df.index.normalize().unique().sort_values()

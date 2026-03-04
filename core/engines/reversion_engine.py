@@ -29,8 +29,16 @@ class MeanReversionEngine(BasePatternEngine):
         is_china = any(ex in exchange for ex in ['HKEX', 'SHSE', 'SZSE', 'CHINA'])
         
         # 2. THRESHOLD LOGIC
-        min_floor = 0.01 if is_thai else 0.005
-        effective_std = self.calculate_dynamic_threshold(pct_change, min_floor)
+        fixed_thresh = settings.get('fixed_threshold')
+        if fixed_thresh is not None:
+            # V5.2: Support Fixed Threshold from config
+            fixed_val = float(fixed_thresh) / 100.0
+            effective_std = pd.Series(fixed_val, index=pct_change.index)
+        else:
+            # V5.3: Prioritize min_threshold from config, fallback to market-specific defaults
+            min_floor = settings.get('min_threshold', 0.01 if is_thai else 0.005)
+            effective_std = self.calculate_dynamic_threshold(pct_change, min_floor)
+            
         current_std = effective_std.iloc[-1]
         
         if abs(pct_change.iloc[-1]) < current_std:

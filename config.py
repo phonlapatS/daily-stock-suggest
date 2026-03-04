@@ -92,17 +92,18 @@ ASSET_GROUPS = {
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [{'symbol': s, 'exchange': 'SET'} for s in THAI_STOCKS],
+        "fixed_threshold": 0.5,
         "engine": "MEAN_REVERSION",
-        "min_threshold": 0.01   # 1.0% floor for Thai stocks
+        # "min_threshold": 0.0125  # Hidden: Stability point for Thai stocks
     },
     "GROUP_B_US": {
         "description": "US Market (NASDAQ)",
         "interval": Interval.in_daily,
         "history_bars": 5000,
         "assets": [{'symbol': s, 'exchange': 'NASDAQ'} for s in NASDAQ_STOCKS],
-        "fixed_threshold": None, # Use Dynamic Base
+        "fixed_threshold": 0.5,
         "engine": "MEAN_REVERSION",
-        "min_threshold": 0.005  # Optimized to 0.5%
+        # "min_threshold": 0.006  # Hidden: Stability point for US stocks
     },
     # ==========================================
     # METALS - Split by Asset for Optimized Thresholds
@@ -110,15 +111,15 @@ ASSET_GROUPS = {
     # ==========================================
     
     # GOLD (XAUUSD) - Breakout Logic ตาม Session (Flow เงินเข้าชัดเจนช่วงเปิดตลาด)
-    # Strategy: TREND_FOLLOWING (Breakout) - ตาม momentum
+    # Strategy: TREND_MOMENTUM (Breakout) - ตาม momentum
     # เน้น Prob% และ RRR (Target: Prob% ~50%+, RRR ~1.0+)
     "GROUP_C1_GOLD_30M": {
         "description": "Gold Intraday 30min",
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.60,  # เพิ่ม threshold เพื่อเน้น Prob% และ RRR (0.55 → 0.60)
-        "engine": "TREND_FOLLOWING"  # Breakout Logic ตาม Session
+        "fixed_threshold": 0.5,
+        "engine": "TREND_MOMENTUM"  # Breakout Logic ตาม Session
     },
     # GOLD (XAUUSD) 15M - Breakout Logic ตาม Session
     # Focus: เพิ่ม Prob% ใกล้ 60% และ RRR ใกล้ 1.5
@@ -128,8 +129,8 @@ ASSET_GROUPS = {
         "interval": Interval.in_15_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAUUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.25,  # ลด threshold เพื่อให้มี trades (0.30 → 0.25) - balance Prob% และ Count
-        "engine": "TREND_FOLLOWING"  # Breakout Logic ตาม Session
+        "fixed_threshold": 0.5,
+        "engine": "TREND_MOMENTUM"  # Breakout Logic ตาม Session
     },
     
     # SILVER (XAGUSD) - Mean Reversion/Fakeout (High Volatility, False Break บ่อย)
@@ -139,7 +140,7 @@ ASSET_GROUPS = {
         "interval": Interval.in_30_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.25,  # เพิ่ม threshold เพื่อเน้น Prob% และ RRR (0.22 → 0.25)
+        "fixed_threshold": 0.5,
         "engine": "MEAN_REVERSION"
     },
     # SILVER (XAGUSD) 15M - Mean Reversion/Fakeout
@@ -150,7 +151,7 @@ ASSET_GROUPS = {
         "interval": Interval.in_15_minute,
         "history_bars": 5000,
         "assets": [{'symbol': 'XAGUSD', 'exchange': 'OANDA'}],
-        "fixed_threshold": 0.60,  # เพิ่ม threshold เพื่อลด Count และ balance กับ Gold (0.50 → 0.60)
+        "fixed_threshold": 0.5,
         "engine": "MEAN_REVERSION"
     },
     "GROUP_C_CHINA_HK": {
@@ -174,9 +175,9 @@ ASSET_GROUPS = {
             {'symbol': '2382', 'exchange': 'HKEX', 'name': 'SUNNY-OPT'},
             {'symbol': '6618', 'exchange': 'HKEX', 'name': 'JD-HEALTH'}
         ],
-        "fixed_threshold": None, 
-        "engine": "MEAN_REVERSION", # V4.4: Switched from TREND to REVERSION (data-driven)
-        "min_threshold": 0.005  # Optimized to 0.5%
+        "fixed_threshold": 0.5, 
+        "engine": "MEAN_REVERSION",
+        # "min_threshold": 0.005  # Hidden: Optimized to 0.5%
     },
     "GROUP_D_TAIWAN": {
         "description": "Taiwan Semicon (TWSE)",
@@ -194,8 +195,7 @@ ASSET_GROUPS = {
             {'symbol': '2357', 'exchange': 'TWSE', 'name': 'ASUSTEK'},
             {'symbol': '2395', 'exchange': 'TWSE', 'name': 'ADVANTECH'}
         ],
-        "fixed_threshold": None,
-        "engine": "MEAN_REVERSION",
-        "min_threshold": 0.005 # Optimized to 0.5% (was 1.0%)
+        "fixed_threshold": 0.5,
+        "engine": "MEAN_REVERSION"
     }
 }

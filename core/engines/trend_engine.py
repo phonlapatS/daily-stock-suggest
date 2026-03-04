@@ -1,6 +1,36 @@
 import pandas as pd
+import numpy as np
 from .base_engine import BasePatternEngine
-from core.indicators import calculate_adx, calculate_volume_adv
+
+
+def calculate_adx(high, low, close, period=14):
+    """Average Directional Index (ADX) calculation."""
+    plus_dm = high.diff()
+    minus_dm = low.diff()
+    
+    plus_dm[plus_dm < 0] = 0
+    minus_dm[minus_dm > 0] = 0
+    minus_dm = abs(minus_dm)
+    
+    plus_dm_mask = (plus_dm > minus_dm) & (plus_dm > 0)
+    minus_dm_mask = (minus_dm > plus_dm) & (minus_dm > 0)
+    
+    true_plus_dm = np.where(plus_dm_mask, plus_dm, 0)
+    true_minus_dm = np.where(minus_dm_mask, minus_dm, 0)
+    
+    tr1 = high - low
+    tr2 = abs(high - close.shift(1))
+    tr3 = abs(low - close.shift(1))
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    
+    atr = tr.rolling(window=period).mean()
+    plus_di = 100 * (pd.Series(true_plus_dm, index=close.index).rolling(window=period).mean() / atr)
+    minus_di = 100 * (pd.Series(true_minus_dm, index=close.index).rolling(window=period).mean() / atr)
+    
+    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
+    adx = dx.rolling(window=period).mean()
+    
+    return pd.Series(adx, index=close.index)
 
 class TrendMomentumEngine(BasePatternEngine):
     """
@@ -42,8 +72,16 @@ class TrendMomentumEngine(BasePatternEngine):
         current_trend = "BULL" if close.iloc[-1] > sma50.iloc[-1] else "BEAR"
         
         # 3. THRESHOLD LOGIC
-        min_floor = 0.006 if is_us else 0.005
-        effective_std = self.calculate_dynamic_threshold(pct_change, min_floor)
+        fixed_thresh = settings.get('fixed_threshold')
+        if fixed_thresh is not None:
+            # V5.2: Support Fixed Threshold from config
+            fixed_val = float(fixed_thresh) / 100.0
+            effective_std = pd.Series(fixed_val, index=pct_change.index)
+        else:
+            # V5.3: Prioritize min_threshold from config, fallback to market-specific defaults
+            min_floor = settings.get('min_threshold', 0.006 if is_us else 0.005)
+            effective_std = self.calculate_dynamic_threshold(pct_change, min_floor)
+            
         current_std = effective_std.iloc[-1]
         
         if abs(pct_change.iloc[-1]) < current_std:
