@@ -375,18 +375,10 @@ Both engines share the same core pipeline from `BasePatternEngine`:
 | **pandas** | ≥ 2.0.0 | DataFrame management, time series operations, CSV/Parquet I/O |
 | **numpy** | ≥ 1.24.0 | Numerical computation, statistical calculations |
 | **tvDatafeed** | latest | TradingView historical price data API (OHLCV) |
-| **matplotlib** | ≥ 3.7.0 | Charting, distribution visualization, bell curve plotting |
-| **seaborn** | ≥ 0.12.0 | Enhanced statistical visualizations (optional overlay) |
+| **python-dotenv** | ≥ 1.0.0 | Loads `.env` file for secure credential management |
 | **requests** | ≥ 2.31.0 | HTTP session handling for TradingView authentication |
-| **beautifulsoup4** | ≥ 4.12.0 | HTML parsing for session token exchange |
-| **python-dateutil** | ≥ 2.8.2 | Flexible date/time parsing |
-| **websocket-client** | ≥ 1.9.0 | WebSocket connection for TradingView data stream |
-
-### Environment Dependencies
-
-| Library | Purpose |
-|:--------|:--------|
-| **python-dotenv** | Loads `.env` file for secure credential management |
+| **tabulate** | ≥ 0.9.0 | Formatted table output for performance log viewer |
+| **pytz** | ≥ 2023.3 | Timezone handling for market close time checks |
 
 ### Install All Dependencies
 ```bash
@@ -398,12 +390,10 @@ pip install -r requirements.txt
 pandas>=2.0.0
 numpy>=1.24.0
 git+https://github.com/rongardF/tvdatafeed.git
-matplotlib>=3.7.0
-seaborn>=0.12.0
+python-dotenv>=1.0.0
 requests>=2.31.0
-beautifulsoup4>=4.12.0
-python-dateutil>=2.8.2
-websocket-client>=1.9.0
+tabulate>=0.9.0
+pytz>=2023.3
 ```
 
 > **Note:** `tvDatafeed` is installed directly from GitHub. Requires `git` to be available on your system.
