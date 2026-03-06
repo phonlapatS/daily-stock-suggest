@@ -1,6 +1,6 @@
-# ✅ Internship Achievement Checklist — Predict N+1
+# ✅ Update Details Checklist — Predict N+1
 
-**Intern:** Rocket (phonlapatS)  
+**Author:** Rocket (phonlapatS)  
 **Period:** December 2025 — March 6, 2026  
 **Project:** [daily-stock-suggest](https://github.com/phonlapatS/daily-stock-suggest)
 
